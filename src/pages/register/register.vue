@@ -1,12 +1,16 @@
 <template>
   <view class="register-page">
+    <!-- 背景弥散光 -->
+    <view class="bg-glow bg-glow-top" />
+    <view class="bg-glow bg-glow-bottom" />
+
     <!-- 标题 -->
     <view class="header">
       <text class="header-title">注册新账号</text>
       <text class="header-desc">注册后即可预约护理服务</text>
     </view>
 
-    <!-- 注册表单 -->
+    <!-- 注册表单 — 玻璃拟态卡片 -->
     <view class="form-section">
       <view class="form-card">
         <!-- 手机号 -->
@@ -21,7 +25,7 @@
             clearable
           >
             <template #prefix>
-              <u-icon name="phone" size="20" color="#999" />
+              <u-icon name="phone" size="20" color="#6B7B8D" />
             </template>
           </u-input>
         </view>
@@ -35,11 +39,11 @@
               type="number"
               maxlength="6"
               placeholder="请输入验证码"
-              border="bottom"
+              border="none"
               class="code-input"
             >
               <template #prefix>
-                <u-icon name="lock" size="20" color="#999" />
+                <u-icon name="lock" size="20" color="#6B7B8D" />
               </template>
             </u-input>
             <u-button
@@ -47,6 +51,7 @@
               :plain="true"
               :disabled="countdown > 0 || phone.length !== 11"
               size="small"
+              shape="round"
               @click="sendCode"
               class="code-btn"
             >
@@ -56,17 +61,33 @@
           </view>
         </view>
 
+        <!-- 昵称（选填） -->
+        <view class="input-group">
+          <text class="input-label">昵称（选填）</text>
+          <u-input
+            v-model="nickname"
+            type="text"
+            maxlength="16"
+            placeholder="给自己取个名字吧"
+            border="bottom"
+          >
+            <template #prefix>
+              <u-icon name="account" size="20" color="#6B7B8D" />
+            </template>
+          </u-input>
+        </view>
+
         <!-- 设置密码 -->
         <view class="input-group">
           <text class="input-label">设置密码</text>
           <u-input
             v-model="password"
             type="password"
-            placeholder="请设置6-20位密码"
+            placeholder="8-32位，需包含字母和数字"
             border="bottom"
           >
             <template #prefix>
-              <u-icon name="lock-fill" size="20" color="#999" />
+              <u-icon name="lock-fill" size="20" color="#6B7B8D" />
             </template>
           </u-input>
         </view>
@@ -81,22 +102,24 @@
             border="bottom"
           >
             <template #prefix>
-              <u-icon name="lock-fill" size="20" color="#999" />
+              <u-icon name="lock-fill" size="20" color="#6B7B8D" />
             </template>
           </u-input>
         </view>
 
-        <!-- 注册按钮 -->
-        <u-button
-          type="primary"
-          shape="round"
-          :loading="submitting"
-          :disabled="!canSubmit"
-          @click="handleRegister"
-          class="submit-btn"
-        >
-          注 册
-        </u-button>
+        <!-- 注册按钮 — 渐变 -->
+        <view class="submit-wrap">
+          <u-button
+            type="primary"
+            shape="round"
+            :loading="submitting"
+            :disabled="!canSubmit"
+            @click="handleRegister"
+            class="submit-btn"
+          >
+            注 册
+          </u-button>
+        </view>
 
         <!-- 返回登录 -->
         <view class="form-footer">
@@ -122,18 +145,24 @@ import { useUserStore } from '@/store/user.js'
 const userStore = useUserStore()
 const phone = ref('')
 const code = ref('')
+const nickname = ref('')
 const password = ref('')
 const confirmPassword = ref('')
 const countdown = ref(0)
 const submitting = ref(false)
 let timer = null
 
+// 密码校验：8-32位，包含字母和数字
+const isPasswordValid = computed(() => {
+  const pwd = password.value
+  return pwd.length >= 8 && pwd.length <= 32 && /[a-zA-Z]/.test(pwd) && /\d/.test(pwd)
+})
+
 const canSubmit = computed(() => {
   return (
     phone.value.length === 11 &&
-    code.value.length >= 4 &&
-    password.value.length >= 6 &&
-    password.value.length <= 20 &&
+    code.value.length === 6 &&
+    isPasswordValid.value &&
     password.value === confirmPassword.value &&
     !submitting.value
   )
@@ -144,7 +173,7 @@ function sendCode() {
     uni.showToast({ title: '请输入正确的手机号', icon: 'none' })
     return
   }
-  userStore.sendVerifyCode(phone.value)
+  userStore.sendSmsCode(phone.value, 'register')
   countdown.value = 60
   timer = setInterval(() => {
     countdown.value--
@@ -158,10 +187,6 @@ function sendCode() {
 async function handleRegister() {
   if (!canSubmit.value) return
 
-  if (password.value.length < 6) {
-    uni.showToast({ title: '密码至少6位', icon: 'none' })
-    return
-  }
   if (password.value !== confirmPassword.value) {
     uni.showToast({ title: '两次密码输入不一致', icon: 'none' })
     return
@@ -169,13 +194,18 @@ async function handleRegister() {
 
   submitting.value = true
   try {
-    await userStore.register(phone.value, code.value, password.value)
+    await userStore.register(
+      phone.value,
+      code.value,
+      password.value,
+      nickname.value || undefined
+    )
     uni.showToast({ title: '注册成功', icon: 'success' })
     setTimeout(() => {
       uni.switchTab({ url: '/pages/index/index' })
     }, 1000)
-  } catch (e) {
-    uni.showToast({ title: e.message || '注册失败', icon: 'none' })
+  } catch {
+    // 错误提示已在 request.js 拦截器中统一处理
   } finally {
     submitting.value = false
   }
@@ -190,17 +220,46 @@ function goLogin() {
 .register-page {
   min-height: 100vh;
   background-color: $bg-color-grey;
+  position: relative;
+  overflow: hidden;
+}
+
+/* 背景弥散光 */
+.bg-glow {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80rpx);
+  opacity: 0.55;
+  pointer-events: none;
+  z-index: 0;
+}
+.bg-glow-top {
+  width: 500rpx;
+  height: 500rpx;
+  background: radial-gradient(circle, rgba(58, 123, 247, 0.18), transparent 70%);
+  top: -160rpx;
+  right: -120rpx;
+}
+.bg-glow-bottom {
+  width: 400rpx;
+  height: 400rpx;
+  background: radial-gradient(circle, rgba(0, 194, 255, 0.14), transparent 70%);
+  bottom: 200rpx;
+  left: -100rpx;
 }
 
 .header {
-  padding: 48rpx $spacing-lg 32rpx;
+  padding: 60rpx $spacing-lg 36rpx;
   text-align: center;
+  position: relative;
+  z-index: 1;
 }
 
 .header-title {
   font-size: 44rpx;
   font-weight: 700;
   color: $text-color;
+  letter-spacing: 2rpx;
 }
 
 .header-desc {
@@ -212,13 +271,18 @@ function goLogin() {
 
 .form-section {
   padding: 0 $spacing-base;
+  position: relative;
+  z-index: 1;
 }
 
 .form-card {
-  background: $bg-color;
+  background: linear-gradient(180deg, rgba(255,255,255,0.65) 0%, rgba(248,251,255,0.58) 100%);
+  backdrop-filter: $glass-blur;
+  -webkit-backdrop-filter: $glass-blur;
   border-radius: $radius-lg;
   padding: 40rpx $spacing-lg;
-  box-shadow: $shadow-base;
+  box-shadow: 0 4rpx 24rpx rgba(58, 123, 247, 0.08);
+  border-top: 6rpx solid rgba(58, 123, 247, 0.4);
 }
 
 .input-group {
@@ -230,29 +294,56 @@ function goLogin() {
   color: $text-color-secondary;
   margin-bottom: 8rpx;
   display: block;
+  font-weight: 500;
 }
 
 /* 验证码行 */
 .code-row {
+  position: relative;
   display: flex;
-  align-items: flex-end;
+  align-items: center;
+  border-bottom: 2rpx solid $border-color;
+  padding-bottom: 8rpx;
 }
 
 .code-input {
   flex: 1;
+  padding-right: 190rpx;
 }
 
 .code-btn {
-  margin-left: 16rpx;
-  min-width: 200rpx !important;
-  height: 64rpx !important;
+  position: absolute;
+  right: 0;
+  bottom: 6rpx;
+  width: 170rpx !important;
+  height: 60rpx !important;
   font-size: 24rpx !important;
-  flex-shrink: 0;
+  padding: 0 !important;
+  border-color: $primary-color !important;
+  color: $primary-color !important;
+}
+
+/* 提交按钮 */
+.submit-wrap {
+  margin-top: $spacing-lg;
 }
 
 .submit-btn {
-  margin-top: $spacing-lg;
   width: 100%;
+  border-radius: $radius-round !important;
+  height: 96rpx !important;
+  font-size: 34rpx !important;
+  font-weight: 600 !important;
+  letter-spacing: 8rpx;
+  background: $primary-gradient !important;
+  border: none !important;
+  box-shadow: 0 8rpx 28rpx rgba(58, 123, 247, 0.3);
+  transition: transform $transition-fast, box-shadow $transition-fast;
+
+  &:active {
+    transform: scale(0.97);
+    box-shadow: 0 4rpx 16rpx rgba(58, 123, 247, 0.2);
+  }
 }
 
 .form-footer {
@@ -270,11 +361,14 @@ function goLogin() {
   font-size: $font-size-base;
   color: $primary-color;
   margin-left: 8rpx;
+  font-weight: 500;
 }
 
 .agreement {
-  padding: 32rpx $spacing-base;
+  padding: 32rpx $spacing-base 48rpx;
   text-align: center;
+  position: relative;
+  z-index: 1;
 }
 
 .agreement-text {

@@ -1,5 +1,13 @@
 /**
- * Mock — 服务项目模块（分类/列表/详情/搜索）
+ * Mock — 服务目录模块（catalog-service）
+ *
+ * 对齐 API v1.0：
+ * - GET /api/v1/categories            → 服务分类列表
+ * - GET /api/v1/items?categoryId=&page=&size=  → 服务列表（分页）
+ * - GET /api/v1/items/{id}            → 服务详情
+ * - GET /api/v1/items?keyword=        → 搜索
+ *
+ * 核心变化：每个服务挂多个规格(specs)，价格在规格上
  */
 import Mock from 'mockjs'
 
@@ -7,219 +15,230 @@ const Random = Mock.Random
 
 // ========== 服务分类 ==========
 const categories = [
-  { id: 'c1', name: '基础护理', icon: '🧑‍⚕️', sort: 1 },
-  { id: 'c2', name: '康复理疗', icon: '💪', sort: 2 },
-  { id: 'c3', name: '中医养生', icon: '🌿', sort: 3 },
-  { id: 'c4', name: '专项护理', icon: '🏥', sort: 4 },
-  { id: 'c5', name: '心理慰藉', icon: '💝', sort: 5 },
+  { categoryId: 1, name: '专业护理', icon: 'https://cdn.nursing.com/icons/category/nurse.png', sortOrder: 1, status: 1 },
+  { categoryId: 2, name: '康复理疗', icon: 'https://cdn.nursing.com/icons/category/rehab.png', sortOrder: 2, status: 1 },
+  { categoryId: 3, name: '中医养生', icon: 'https://cdn.nursing.com/icons/category/tcm.png', sortOrder: 3, status: 1 },
+  { categoryId: 4, name: '专项护理', icon: 'https://cdn.nursing.com/icons/category/special.png', sortOrder: 4, status: 1 },
+  { categoryId: 5, name: '心理慰藉', icon: 'https://cdn.nursing.com/icons/category/psych.png', sortOrder: 5, status: 1 },
 ]
 
-// ========== 服务项目列表 ==========
-const serviceList = [
-  {
-    id: 's1',
-    categoryId: 'c1',
-    name: '日常起居照料',
-    description: '协助老人完成起床、洗漱、穿衣、饮食等日常生活起居，确保生活舒适整洁',
-    price: 150,
-    unit: '次',
-    duration: '2小时',
-    rating: 4.8,
-    sales: 1280,
-    cover: '',
-    tags: ['热门', '新客优惠'],
-  },
-  {
-    id: 's2',
-    categoryId: 'c1',
-    name: '陪同就医',
-    description: '专业护理员全程陪同老人就医，协助挂号、取药、记录医嘱，让就医更省心',
-    price: 200,
-    unit: '次',
-    duration: '4小时',
-    rating: 4.9,
-    sales: 860,
-    cover: '',
-    tags: ['推荐'],
-  },
-  {
-    id: 's3',
-    categoryId: 'c1',
-    name: '压疮护理',
-    description: '针对长期卧床老人的压疮预防与护理，包括定期翻身、皮肤清洁、敷药换药',
-    price: 180,
-    unit: '次',
-    duration: '1.5小时',
-    rating: 4.7,
-    sales: 420,
-    cover: '',
-    tags: [],
-  },
-  {
-    id: 's4',
-    categoryId: 'c2',
-    name: '康复运动指导',
-    description: '专业康复师根据老人身体状况制定运动方案，一对一指导康复训练',
-    price: 220,
-    unit: '次',
-    duration: '1小时',
-    rating: 4.6,
-    sales: 750,
-    cover: '',
-    tags: ['热销'],
-  },
-  {
-    id: 's5',
-    categoryId: 'c2',
-    name: '术后康复护理',
-    description: '针对术后恢复期老人的全方位护理，包括切口护理、功能锻炼、营养指导',
-    price: 300,
-    unit: '次',
-    duration: '2小时',
-    rating: 4.9,
-    sales: 310,
-    cover: '',
-    tags: ['专业'],
-  },
-  {
-    id: 's6',
-    categoryId: 'c2',
-    name: '推拿按摩',
-    description: '专业推拿师上门提供全身或局部推拿按摩，缓解肌肉酸痛、改善血液循环',
-    price: 168,
-    unit: '次',
-    duration: '1小时',
-    rating: 4.5,
-    sales: 1560,
-    cover: '',
-    tags: ['人气'],
-  },
-  {
-    id: 's7',
-    categoryId: 'c3',
-    name: '艾灸调理',
-    description: '传统艾灸疗法，温经通络，调理脏腑，适用于老年人常见慢性病辅助治疗',
-    price: 128,
-    unit: '次',
-    duration: '45分钟',
-    rating: 4.7,
-    sales: 920,
-    cover: '',
-    tags: [],
-  },
-  {
-    id: 's8',
-    categoryId: 'c3',
-    name: '拔罐刮痧',
-    description: '中医传统疗法拔罐与刮痧，祛风散寒、活血通络，缓解各种酸痛不适',
-    price: 98,
-    unit: '次',
-    duration: '30分钟',
-    rating: 4.3,
-    sales: 680,
-    cover: '',
-    tags: ['性价比'],
-  },
-  {
-    id: 's9',
-    categoryId: 'c4',
-    name: '静脉采血',
-    description: '专业护士上门进行静脉采血，规范操作、安全无菌，免去老人往返医院奔波',
-    price: 80,
-    unit: '次',
-    duration: '30分钟',
-    rating: 4.8,
-    sales: 2100,
-    cover: '',
-    tags: ['高频'],
-  },
-  {
-    id: 's10',
-    categoryId: 'c4',
-    name: 'PICC维护',
-    description: '专业护士对PICC置管进行定期维护护理，包括冲管、更换敷料、观察评估',
-    price: 260,
-    unit: '次',
-    duration: '1小时',
-    rating: 5.0,
-    sales: 340,
-    cover: '',
-    tags: ['专业', '推荐'],
-  },
-  {
-    id: 's11',
-    categoryId: 'c4',
-    name: '鼻饲护理',
-    description: '为需要鼻饲的老人提供专业鼻饲操作及管道维护，确保营养安全摄入',
-    price: 160,
-    unit: '次',
-    duration: '1小时',
-    rating: 4.8,
-    sales: 180,
-    cover: '',
-    tags: [],
-  },
-  {
-    id: 's12',
-    categoryId: 'c5',
-    name: '心理陪伴聊天',
-    description: '专业心理咨询师上门陪伴聊天，缓解老人孤独感、焦虑情绪，提供心理支持',
-    price: 150,
-    unit: '次',
-    duration: '1.5小时',
-    rating: 4.6,
-    sales: 560,
-    cover: '',
-    tags: ['暖新'],
-  },
-]
-
-// ========== 生成更多随机服务 ==========
-for (let i = 0; i < 8; i++) {
-  const cat = categories[Random.integer(0, categories.length - 1)]
-  serviceList.push({
-    id: `s_extra_${i}`,
-    categoryId: cat.id,
-    name: Random.ctitle(4, 8) + '护理服务',
-    description: Random.csentence(10, 25),
-    price: Random.integer(60, 500),
-    unit: '次',
-    duration: `${Random.integer(30, 180)}分钟`,
-    rating: Random.float(3, 5, 1, 1),
-    sales: Random.integer(50, 3000),
-    cover: '',
-    tags: [],
-  })
+// 辅助：给服务生成规格
+function makeSpecs(basePrice, itemId) {
+  const specId = (id) => itemId * 100 + id
+  return [
+    { specId: specId(1), name: '单次服务', price: basePrice, originalPrice: Math.round(basePrice * 1.2), duration: 60, status: 1 },
+    { specId: specId(2), name: '3次套餐', price: Math.round(basePrice * 2.7), originalPrice: Math.round(basePrice * 3.2), duration: 60, status: 1 },
+    { specId: specId(3), name: '5次套餐', price: Math.round(basePrice * 4.3), originalPrice: Math.round(basePrice * 5.2), duration: 60, status: 1 },
+  ]
 }
 
-// ========== 工具函数：从 URL 提取 query 参数 ==========
+// ========== 服务项目 ==========
+const serviceItems = [
+  {
+    itemId: 101, categoryId: 1, categoryName: '专业护理',
+    name: '上门输液护理',
+    description: '由持证执业护士上门，为您提供专业的**静脉输液护理**服务。\n\n### 服务流程\n1. 核对医嘱与药品\n2. 评估患者状况\n3. 规范输液操作\n4. 观察反应并记录\n\n### 适用人群\n需长期或临时输液的患者',
+    coverImage: 'https://cdn.nursing.com/items/101.jpg',
+    images: ['https://cdn.nursing.com/items/101-1.jpg', 'https://cdn.nursing.com/items/101-2.jpg'],
+    status: 1, sortOrder: 1,
+  },
+  {
+    itemId: 102, categoryId: 1, categoryName: '专业护理',
+    name: '压疮护理',
+    description: '针对长期卧床老人的**压疮预防与护理**，包括定期翻身、皮肤清洁、敷药换药。\n\n### 服务内容\n- 压疮风险评估\n- 创面清洁与换药\n- 减压措施指导\n- 营养支持建议',
+    coverImage: 'https://cdn.nursing.com/items/102.jpg',
+    images: ['https://cdn.nursing.com/items/102-1.jpg'],
+    status: 1, sortOrder: 2,
+  },
+  {
+    itemId: 103, categoryId: 1, categoryName: '专业护理',
+    name: '日常起居照料',
+    description: '协助老人完成起床、洗漱、穿衣、饮食等日常生活起居，确保生活舒适整洁。',
+    coverImage: 'https://cdn.nursing.com/items/103.jpg',
+    images: [],
+    status: 1, sortOrder: 3,
+  },
+  {
+    itemId: 201, categoryId: 2, categoryName: '康复理疗',
+    name: '康复运动指导',
+    description: '专业康复师根据老人身体状况制定运动方案，一对一指导康复训练。',
+    coverImage: 'https://cdn.nursing.com/items/201.jpg',
+    images: ['https://cdn.nursing.com/items/201-1.jpg', 'https://cdn.nursing.com/items/201-2.jpg'],
+    status: 1, sortOrder: 1,
+  },
+  {
+    itemId: 202, categoryId: 2, categoryName: '康复理疗',
+    name: '术后康复护理',
+    description: '针对术后恢复期老人的全方位护理，包括切口护理、功能锻炼、营养指导。',
+    coverImage: 'https://cdn.nursing.com/items/202.jpg',
+    images: [],
+    status: 1, sortOrder: 2,
+  },
+  {
+    itemId: 203, categoryId: 2, categoryName: '康复理疗',
+    name: '推拿按摩',
+    description: '专业推拿师上门提供全身或局部推拿按摩，缓解肌肉酸痛、改善血液循环。',
+    coverImage: 'https://cdn.nursing.com/items/203.jpg',
+    images: [],
+    status: 1, sortOrder: 3,
+  },
+  {
+    itemId: 301, categoryId: 3, categoryName: '中医养生',
+    name: '艾灸调理',
+    description: '传统艾灸疗法，温经通络，调理脏腑，适用于老年人常见慢性病辅助治疗。',
+    coverImage: 'https://cdn.nursing.com/items/301.jpg',
+    images: [],
+    status: 1, sortOrder: 1,
+  },
+  {
+    itemId: 302, categoryId: 3, categoryName: '中医养生',
+    name: '拔罐刮痧',
+    description: '中医传统疗法拔罐与刮痧，祛风散寒、活血通络，缓解各种酸痛不适。',
+    coverImage: 'https://cdn.nursing.com/items/302.jpg',
+    images: [],
+    status: 1, sortOrder: 2,
+  },
+  {
+    itemId: 401, categoryId: 4, categoryName: '专项护理',
+    name: '静脉采血',
+    description: '专业护士上门进行静脉采血，规范操作、安全无菌，免去老人往返医院奔波。',
+    coverImage: 'https://cdn.nursing.com/items/401.jpg',
+    images: [],
+    status: 1, sortOrder: 1,
+  },
+  {
+    itemId: 402, categoryId: 4, categoryName: '专项护理',
+    name: 'PICC维护',
+    description: '专业护士对PICC置管进行定期维护护理，包括冲管、更换敷料、观察评估。',
+    coverImage: 'https://cdn.nursing.com/items/402.jpg',
+    images: [],
+    status: 1, sortOrder: 2,
+  },
+  {
+    itemId: 403, categoryId: 4, categoryName: '专项护理',
+    name: '鼻饲护理',
+    description: '为需要鼻饲的老人提供专业鼻饲操作及管道维护，确保营养安全摄入。',
+    coverImage: 'https://cdn.nursing.com/items/403.jpg',
+    images: [],
+    status: 1, sortOrder: 3,
+  },
+  {
+    itemId: 501, categoryId: 5, categoryName: '心理慰藉',
+    name: '心理陪伴聊天',
+    description: '专业心理咨询师上门陪伴聊天，缓解老人孤独感、焦虑情绪，提供心理支持。',
+    coverImage: 'https://cdn.nursing.com/items/501.jpg',
+    images: [],
+    status: 1, sortOrder: 1,
+  },
+]
+
+// 基础价格表（itemId → 最低单价）
+const basePrices = {
+  101: 150, 102: 180, 103: 120,
+  201: 220, 202: 300, 203: 168,
+  301: 128, 302: 98,
+  401: 80,  402: 260, 403: 160,
+  501: 150,
+}
+
+// 为每个服务生成 specs 和 minPrice
+serviceItems.forEach((item) => {
+  const bp = basePrices[item.itemId] || 150
+  item.specs = makeSpecs(bp, item.itemId)
+  item.minPrice = Math.min(...item.specs.map((s) => s.price))
+  item.createTime = '2026-07-01T10:00:00+08:00'
+})
+
+// ========== 工具函数 ==========
 function getQueryParam(url, param) {
   const regex = new RegExp(`[?&]${param}=([^&]*)`)
   const match = url.match(regex)
   return match ? decodeURIComponent(match[1]) : null
 }
 
+/** 分页响应 */
+function paginated(list, page, size) {
+  const p = parseInt(page) || 1
+  const s = Math.min(parseInt(size) || 20, 50)
+  const start = (p - 1) * s
+  return {
+    list: list.slice(start, start + s),
+    total: list.length,
+    page: p,
+    size: s,
+  }
+}
+
+/** 构建服务列表项（含 minPrice 和第一个规格） */
+function buildListItem(item) {
+  return {
+    itemId: item.itemId,
+    categoryId: item.categoryId,
+    categoryName: item.categoryName,
+    name: item.name,
+    description: item.description,
+    coverImage: item.coverImage,
+    sortOrder: item.sortOrder,
+    status: item.status,
+    minPrice: item.minPrice,
+    specs: item.specs.filter((s) => s.status === 1),
+  }
+}
+
+/** 构建服务详情 */
+function buildDetail(item) {
+  return {
+    itemId: item.itemId,
+    categoryId: item.categoryId,
+    categoryName: item.categoryName,
+    name: item.name,
+    description: item.description,
+    coverImage: item.coverImage,
+    images: item.images,
+    sortOrder: item.sortOrder,
+    status: item.status,
+    specs: item.specs.filter((s) => s.status === 1),
+    minPrice: item.minPrice,
+    createTime: item.createTime,
+  }
+}
+
 // ========== 接口 Mock ==========
 
-// 获取服务分类
-Mock.mock(/\/api\/service\/categories/, 'get', () => {
+// 1. 服务分类列表
+Mock.mock(/\/api\/v1\/categories$/, 'get', () => {
   return {
-    code: 200,
-    data: categories,
-    message: '成功',
+    code: 0,
+    message: 'success',
+    data: categories.filter((c) => c.status === 1),
   }
 })
 
-// 获取服务列表（支持分类筛选 + 关键词搜索）
-Mock.mock(/\/api\/service\/list/, 'get', (options) => {
-  const categoryId = getQueryParam(options.url, 'categoryId')
-  const keyword = getQueryParam(options.url, 'keyword')
-  let list = [...serviceList]
+// 2. 服务项目列表 + 搜索（同一端点 /api/v1/items，通过参数区分）
+Mock.mock(/\/api\/v1\/items(\?|$)/, 'get', (options) => {
+  const url = options.url
+  const categoryId = getQueryParam(url, 'categoryId')
+  const keyword = getQueryParam(url, 'keyword')
+  const page = getQueryParam(url, 'page') || '1'
+  const size = getQueryParam(url, 'size') || '20'
 
+  let list = serviceItems.filter((s) => s.status === 1)
+
+  // 分类筛选
   if (categoryId) {
-    list = list.filter((s) => s.categoryId === categoryId)
+    const catId = parseInt(categoryId)
+    // 检查分类是否存在
+    if (!categories.find((c) => c.categoryId === catId)) {
+      return { code: 1005, message: '分类不存在', data: null }
+    }
+    list = list.filter((s) => s.categoryId === catId)
   }
+
+  // 关键词搜索
   if (keyword) {
+    if (!keyword.trim()) {
+      return { code: 1000, message: '关键词不能为空', data: null }
+    }
     const kw = keyword.toLowerCase()
     list = list.filter(
       (s) =>
@@ -228,63 +247,35 @@ Mock.mock(/\/api\/service\/list/, 'get', (options) => {
     )
   }
 
+  // 按 sortOrder 排序
+  list.sort((a, b) => a.sortOrder - b.sortOrder)
+
   return {
-    code: 200,
-    data: list,
-    message: '成功',
+    code: 0,
+    message: 'success',
+    data: paginated(list.map(buildListItem), page, size),
   }
 })
 
-// 获取服务详情
-Mock.mock(/\/api\/service\/detail/, 'get', (options) => {
-  const id = getQueryParam(options.url, 'id')
-  const service = serviceList.find((s) => s.id === id)
+// 3. 服务详情（需要精确匹配 /api/v1/items/{id}，不跟列表/搜索冲突）
+Mock.mock(/\/api\/v1\/items\/\d+$/, 'get', (options) => {
+  const idMatch = options.url.match(/\/api\/v1\/items\/(\d+)/)
+  const itemId = idMatch ? parseInt(idMatch[1]) : null
 
-  if (!service) {
-    return { code: 10004, data: null, message: '服务不存在' }
+  if (!itemId) {
+    return { code: 1000, message: '参数错误', data: null }
   }
 
-  // 构造详情页额外信息
-  const detail = {
-    ...service,
-    images: [
-      Random.image('750x500', '#4A90D9', '#FFF', service.name),
-      Random.image('750x500', '#6BA5E7', '#FFF', service.name),
-      Random.image('750x500', '#3570B0', '#FFF', service.name),
-    ],
-    serviceScope: [
-      '服务前会进行健康评估',
-      '提供一次性护理用品',
-      '服务后可在线评价',
-    ],
-    notice: [
-      '请确保服务期间有人陪同',
-      '如有特殊需求请提前备注',
-      '取消需提前2小时',
-    ],
-    reviews: (() => {
-      const reviewPool = [
-        { name: '张阿姨', rating: 5, content: '护理员非常专业，态度特别好，帮我妈做了全面检查，还耐心教我们日常注意事项，非常满意！', date: '2026-06-20' },
-        { name: '李叔叔', rating: 5, content: '老伴卧床两年了，这次护士上门做压疮护理很细心，清理得很干净，比我们自己去医院方便太多了。', date: '2026-06-15' },
-        { name: '王女士', rating: 4, content: '康复师经验丰富，给我爸制定了详细的锻炼计划，坚持了一个月已经能看到效果了，会继续预约。', date: '2026-06-10' },
-        { name: '赵先生', rating: 5, content: '响应速度很快，下单后半小时就安排好了。护士技术娴熟，采血一次成功，老人一点都不紧张。', date: '2026-06-05' },
-        { name: '刘奶奶', rating: 4, content: '子女都在外地，我这腿脚不方便，有了这个平台真的帮了大忙。陪诊的小姑娘很贴心，全程帮我排队取药。', date: '2026-05-28' },
-        { name: '陈女士', rating: 5, content: '中医推拿师傅手法很好，我妈妈的肩颈疼了好几个月，按了两次就缓解了很多，价格也公道。', date: '2026-05-20' },
-        { name: '周先生', rating: 3, content: '整体服务还可以，就是预约时间有些延迟，希望可以改进调度效率。护理本身是没问题的。', date: '2026-05-15' },
-        { name: '孙阿姨', rating: 5, content: '已经是第三次下单了，每次体验都很好。平台上的服务项目越来越丰富，对我们老年人来说真的很实用。', date: '2026-05-10' },
-      ]
-      const picked = []
-      const used = new Set()
-      while (picked.length < 3) {
-        const r = reviewPool[Math.floor(Math.random() * reviewPool.length)]
-        if (!used.has(r.name)) {
-          used.add(r.name)
-          picked.push({ id: Random.id(), userName: r.name, avatar: '', rating: r.rating, content: r.content, createTime: r.date })
-        }
-      }
-      return picked
-    })(),
+  const item = serviceItems.find((s) => s.itemId === itemId && s.status === 1)
+  if (!item) {
+    return { code: 1005, message: '服务项目不存在', data: null }
   }
 
-  return { code: 200, data: detail, message: '成功' }
+  return {
+    code: 0,
+    message: 'success',
+    data: buildDetail(item),
+  }
 })
+
+console.log('[Mock] 服务目录模块已加载 (catalog-service v1.0)')

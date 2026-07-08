@@ -13,7 +13,7 @@ defineProps({
   description: { type: String, default: '' },
   icon: { type: String, default: 'frown' },
   size: { type: [Number, String], default: 80 },
-  iconColor: { type: String, default: '#C0C4CC' },
+  iconColor: { type: String, default: '#C5CDD8' },
 })
 </script>
 
@@ -27,14 +27,14 @@ defineProps({
 }
 
 .empty-title {
-  font-size: 28rpx;
-  color: #999;
+  font-size: $font-size-base;
+  color: $text-color-hint;
   margin-top: 24rpx;
 }
 
 .empty-desc {
-  font-size: 24rpx;
-  color: #C0C4CC;
+  font-size: $font-size-sm;
+  color: $text-color-disabled;
   margin-top: 8rpx;
 }
 </style>

@@ -6,13 +6,13 @@ export default defineConfig({
   css: {
     preprocessorOptions: {
       scss: {
-        // 仅注入 uView Plus 主题变量，不引用 uni.scss 避免循环
+        // uni.scss 由 Uni-app 框架自动注入，不要重复 import
         additionalData: `
-          $u-primary: #4A90D9;
-          $u-success: #52C41A;
-          $u-warning: #FAAD14;
-          $u-error: #FF4D4F;
-          $u-info: #909399;
+          $u-primary: #3A7BF7;
+          $u-success: #00B8A9;
+          $u-warning: #FF8A5C;
+          $u-error: #FF5252;
+          $u-info: #8E9DAE;
           @import "uview-plus/theme.scss";
         `,
       },

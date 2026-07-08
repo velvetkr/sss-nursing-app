@@ -1,9 +1,9 @@
 <template>
   <view class="skeleton-list">
     <view v-for="i in count" :key="i" class="skeleton-card">
-      <view class="skeleton-line skeleton-title"></view>
-      <view class="skeleton-line skeleton-desc"></view>
-      <view class="skeleton-line skeleton-short"></view>
+      <view class="skeleton-line skeleton-title" />
+      <view class="skeleton-line skeleton-desc" />
+      <view class="skeleton-line skeleton-short" />
     </view>
   </view>
 </template>
@@ -20,24 +20,26 @@ defineProps({
 }
 
 .skeleton-card {
-  background: #fff;
-  border-radius: 12rpx;
-  padding: 24rpx;
+  background: $glass-bg;
+  backdrop-filter: $glass-blur;
+  -webkit-backdrop-filter: $glass-blur;
+  border-radius: $radius-md;
+  padding: 28rpx;
   margin-bottom: 16rpx;
 }
 
 .skeleton-line {
   height: 24rpx;
-  background: linear-gradient(90deg, #f0f0f0 25%, #e8e8e8 50%, #f0f0f0 75%);
+  background: linear-gradient(90deg, #ECF0F6 25%, #DEE4ED 50%, #ECF0F6 75%);
   background-size: 200% 100%;
-  border-radius: 4rpx;
+  border-radius: 6rpx;
   margin-bottom: 16rpx;
   animation: shimmer 1.5s ease-in-out infinite;
 }
 
-.skeleton-title { width: 60%; height: 32rpx; }
-.skeleton-desc { width: 90%; }
-.skeleton-short { width: 35%; }
+.skeleton-title { width: 55%; height: 34rpx; }
+.skeleton-desc { width: 88%; }
+.skeleton-short { width: 32%; }
 
 @keyframes shimmer {
   0% { background-position: 200% 0; }

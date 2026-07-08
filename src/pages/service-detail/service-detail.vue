@@ -1,66 +1,97 @@
 <template>
   <view class="detail-page" v-if="service">
+    <!-- 背景弥散光 -->
+    <view class="bg-glow bg-glow-top" />
+
+    <!-- 封面图 -->
+    <image
+      v-if="service.coverImage"
+      :src="service.coverImage"
+      class="detail-cover"
+      mode="aspectFill"
+    />
+
     <!-- 服务名称 & 价格 -->
     <view class="detail-header">
       <text class="detail-name">{{ service.name }}</text>
+      <text class="detail-category">{{ service.categoryName }}</text>
       <view class="detail-price">
-        <text class="price-num">¥{{ service.price }}</text>
-        <text class="price-unit">/{{ service.unit }}</text>
+        <text class="price-num">¥{{ service.minPrice }}</text>
+        <text class="price-unit">起</text>
       </view>
-      <view class="detail-meta">
-        <text class="meta-item">⭐ {{ service.rating }} 分</text>
-        <text class="meta-item">{{ service.sales }} 次服务</text>
-        <text class="meta-item">⏱ {{ service.duration }}</text>
-      </view>
-      <view class="detail-tags" v-if="service.tags?.length">
-        <text v-for="tag in service.tags" :key="tag" class="tag">{{ tag }}</text>
+    </view>
+
+    <!-- 规格选择 -->
+    <view class="detail-section" v-if="service.specs?.length">
+      <text class="section-title">服务规格</text>
+      <view class="specs-list">
+        <view
+          v-for="spec in service.specs"
+          :key="spec.specId"
+          class="spec-item"
+          :class="{ active: selectedSpec?.specId === spec.specId }"
+          @click="selectSpec(spec)"
+        >
+          <view class="spec-info">
+            <text class="spec-name">{{ spec.name }}</text>
+            <text class="spec-duration">⏱ {{ spec.duration }}分钟</text>
+          </view>
+          <view class="spec-price">
+            <text class="spec-current">¥{{ spec.price }}</text>
+            <text v-if="spec.originalPrice && spec.originalPrice > spec.price" class="spec-original">¥{{ spec.originalPrice }}</text>
+          </view>
+        </view>
       </view>
     </view>
 
     <!-- 服务介绍 -->
-    <view class="detail-section">
+    <view class="detail-section" v-if="service.description">
       <text class="section-title">服务介绍</text>
-      <text class="section-content">{{ service.description }}</text>
-    </view>
-
-    <!-- 服务范围 -->
-    <view class="detail-section" v-if="service.serviceScope?.length">
-      <text class="section-title">服务范围</text>
-      <view class="scope-list">
-        <view v-for="(item, i) in service.serviceScope" :key="i" class="scope-item">
-          <u-icon name="checkmark-circle" size="18" color="#52C41A" />
-          <text class="scope-text">{{ item }}</text>
-        </view>
+      <view class="description-content">
+        <text class="desc-text">{{ service.description }}</text>
       </view>
     </view>
 
-    <!-- 注意事项 -->
-    <view class="detail-section" v-if="service.notice?.length">
-      <text class="section-title">注意事项</text>
-      <view class="notice-list">
-        <view v-for="(item, i) in service.notice" :key="i" class="notice-item">
-          <text class="notice-dot">•</text>
-          <text class="notice-text">{{ item }}</text>
-        </view>
-      </view>
+    <!-- 图片展示 -->
+    <view class="detail-section" v-if="service.images?.length">
+      <text class="section-title">服务展示</text>
+      <scroll-view scroll-x class="images-scroll" :show-scrollbar="false">
+        <image
+          v-for="(img, i) in service.images"
+          :key="i"
+          :src="img"
+          class="detail-image"
+          mode="aspectFill"
+          @click="previewImage(i)"
+        />
+      </scroll-view>
     </view>
 
     <!-- 用户评价 -->
-    <view class="detail-section" v-if="service.reviews?.length">
-      <text class="section-title">用户评价 ({{ service.reviews.length }})</text>
-      <view v-for="review in service.reviews" :key="review.id" class="review-item">
+    <view class="detail-section" v-if="reviews.length">
+      <text class="section-title">用户评价 ({{ reviewTotal }})</text>
+      <view v-for="review in reviews" :key="review.reviewId" class="review-item">
         <view class="review-header">
-          <text class="review-user">{{ review.userName }}</text>
-          <text class="review-rating">⭐ {{ review.rating }}</text>
+          <text class="review-user">{{ review.userNickname }}</text>
+          <view class="review-stars">
+            <text v-for="s in 5" :key="s" class="star" :class="{ filled: s <= review.rating }">★</text>
+          </view>
         </view>
         <text class="review-content">{{ review.content }}</text>
         <text class="review-time">{{ review.createTime }}</text>
       </view>
     </view>
 
-    <!-- 底部预约按钮 -->
+    <!-- 底部预约栏 — 玻璃拟态 -->
     <view class="bottom-bar">
-      <u-button type="primary" shape="round" size="large" @click="handleBook">
+      <view class="bottom-info" v-if="selectedSpec">
+        <text class="bottom-spec">{{ selectedSpec.name }}</text>
+        <text class="bottom-price">¥{{ selectedSpec.price }}</text>
+      </view>
+      <view class="bottom-info" v-else>
+        <text class="bottom-spec">请选择规格</text>
+      </view>
+      <u-button type="primary" shape="round" size="large" @click="handleBook" class="book-btn">
         立即预约
       </u-button>
     </view>
@@ -74,21 +105,58 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { useServiceStore } from '@/store/service.js'
+import http from '@/utils/request.js'
 
 const serviceStore = useServiceStore()
 const service = ref(null)
+const selectedSpec = ref(null)
+const reviews = ref([])
+const reviewTotal = ref(0)
 
 onLoad(async (options) => {
   const { id } = options
   if (id) {
-    service.value = await serviceStore.fetchServiceDetail(id)
+    try {
+      service.value = await serviceStore.fetchServiceDetail(parseInt(id))
+      if (service.value?.specs?.length) {
+        selectedSpec.value = service.value.specs[0]
+      }
+      loadReviews(id)
+    } catch {
+      uni.showToast({ title: '服务不存在', icon: 'none' })
+    }
   }
 })
 
+async function loadReviews(itemId) {
+  try {
+    const res = await http.get('/api/v1/reviews', { itemId: parseInt(itemId), page: 1, size: 5 })
+    reviews.value = res.data?.list || []
+    reviewTotal.value = res.data?.total || 0
+  } catch {
+    // 评价加载失败不影响详情展示
+  }
+}
+
+function selectSpec(spec) {
+  selectedSpec.value = spec
+}
+
+function previewImage(index) {
+  uni.previewImage({
+    urls: service.value.images,
+    current: index,
+  })
+}
+
 function handleBook() {
+  if (!selectedSpec.value) {
+    uni.showToast({ title: '请选择服务规格', icon: 'none' })
+    return
+  }
   uni.showToast({ title: '预约功能将在下单模块中实现', icon: 'none' })
 }
 </script>
@@ -97,12 +165,39 @@ function handleBook() {
 .detail-page {
   min-height: 100vh;
   background-color: $bg-color-grey;
-  padding-bottom: 120rpx;
+  padding-bottom: 140rpx;
+  position: relative;
+  overflow: hidden;
 }
 
+/* 背景弥散光 */
+.bg-glow {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80rpx);
+  opacity: 0.5;
+  pointer-events: none;
+  z-index: 0;
+}
+.bg-glow-top {
+  width: 380rpx;
+  height: 380rpx;
+  background: radial-gradient(circle, rgba(58, 123, 247, 0.16), transparent 70%);
+  top: 300rpx;
+  right: -80rpx;
+}
+
+/* 封面 */
+.detail-cover {
+  width: 100%;
+  height: 420rpx;
+  background-color: $bg-color-grey;
+}
+
+/* 头部信息 */
 .detail-header {
   background-color: $bg-color;
-  padding: $spacing-lg $spacing-base;
+  padding: 28rpx $spacing-base;
 }
 
 .detail-name {
@@ -112,101 +207,159 @@ function handleBook() {
   line-height: 1.4;
 }
 
+.detail-category {
+  font-size: $font-size-sm;
+  color: $primary-color;
+  background-color: $primary-bg;
+  padding: 6rpx 18rpx;
+  border-radius: 6rpx;
+  margin-top: 16rpx;
+  display: inline-block;
+  font-weight: 500;
+}
+
 .detail-price {
-  margin-top: $spacing-md;
+  margin-top: 20rpx;
 }
 
 .price-num {
   font-size: 52rpx;
   font-weight: 700;
-  color: $error-color;
+  color: $warning-color;
 }
 
 .price-unit {
   font-size: $font-size-base;
   color: $text-color-hint;
+  margin-left: 6rpx;
 }
 
-.detail-meta {
-  display: flex;
-  margin-top: $spacing-sm;
-  font-size: $font-size-sm;
-  color: $text-color-hint;
-}
-
-.meta-item {
-  margin-right: $spacing-lg;
-}
-
-.detail-tags {
-  display: flex;
-  margin-top: $spacing-sm;
-}
-
-.tag {
-  font-size: 20rpx;
-  color: $primary-color;
-  background-color: $primary-bg;
-  padding: 4rpx 16rpx;
-  border-radius: $radius-sm;
-  margin-right: $spacing-sm;
-}
-
+/* 版块卡片 */
 .detail-section {
-  background-color: $bg-color;
-  margin-top: $spacing-sm;
+  background: linear-gradient(180deg, rgba(255,255,255,0.65) 0%, rgba(248,251,255,0.58) 100%);
+  backdrop-filter: $glass-blur;
+  -webkit-backdrop-filter: $glass-blur;
+  margin-top: 12rpx;
   padding: $spacing-lg $spacing-base;
+  box-shadow: 0 2rpx 16rpx rgba(58, 123, 247, 0.04);
 }
 
 .section-title {
   font-size: $font-size-md;
   font-weight: 600;
   color: $text-color;
-  margin-bottom: $spacing-md;
+  margin-bottom: 20rpx;
   display: block;
+  position: relative;
+  padding-left: 16rpx;
+
+  &::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 6rpx;
+    height: 24rpx;
+    background: $primary-gradient;
+    border-radius: 3rpx;
+  }
 }
 
-.section-content {
-  font-size: $font-size-base;
-  color: $text-color-secondary;
-  line-height: 1.8;
-}
-
-.scope-list {
-  margin-top: $spacing-sm;
-}
-
-.scope-item {
+/* 规格 */
+.specs-list {
   display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.spec-item {
+  display: flex;
+  justify-content: space-between;
   align-items: center;
-  margin-bottom: $spacing-sm;
+  padding: 24rpx 20rpx;
+  border: 2rpx solid $border-color;
+  border-radius: $radius-base;
+  transition: all $transition-base;
+  min-height: $touch-min;
+
+  &:active {
+    transform: scale(0.98);
+  }
+
+  &.active {
+    border-color: $primary-color;
+    background-color: $primary-bg;
+    box-shadow: 0 4rpx 16rpx rgba(58, 123, 247, 0.1);
+
+    .spec-current {
+      color: $primary-color;
+    }
+  }
 }
 
-.scope-text {
-  font-size: $font-size-base;
-  color: $text-color-secondary;
-  margin-left: $spacing-sm;
-}
-
-.notice-item {
+.spec-info {
   display: flex;
-  margin-bottom: $spacing-sm;
+  flex-direction: column;
 }
 
-.notice-dot {
+.spec-name {
+  font-size: $font-size-base;
+  font-weight: 500;
+  color: $text-color;
+}
+
+.spec-duration {
+  font-size: $font-size-xs;
+  color: $text-color-hint;
+  margin-top: 6rpx;
+}
+
+.spec-price {
+  display: flex;
+  align-items: baseline;
+  gap: 10rpx;
+}
+
+.spec-current {
+  font-size: 34rpx;
+  font-weight: 700;
   color: $warning-color;
-  margin-right: $spacing-sm;
-  flex-shrink: 0;
+  transition: color $transition-base;
 }
 
-.notice-text {
+.spec-original {
+  font-size: 22rpx;
+  color: $text-color-disabled;
+  text-decoration: line-through;
+}
+
+/* 服务介绍 */
+.desc-text {
   font-size: $font-size-base;
   color: $text-color-secondary;
+  line-height: 1.9;
+  white-space: pre-line;
 }
 
+/* 图片展示 */
+.images-scroll {
+  white-space: nowrap;
+}
+
+.detail-image {
+  width: 300rpx;
+  height: 200rpx;
+  border-radius: 12rpx;
+  margin-right: 16rpx;
+  display: inline-block;
+  background-color: $bg-color-grey;
+}
+
+/* 评价 */
 .review-item {
-  padding: $spacing-md 0;
-  border-bottom: 1rpx solid $border-color-light;
+  padding: 24rpx 0;
+  border-bottom: 1rpx solid $divider-color;
 
   &:last-child {
     border-bottom: none;
@@ -225,46 +378,94 @@ function handleBook() {
   color: $text-color;
 }
 
-.review-rating {
-  font-size: $font-size-sm;
-  color: #FAAD14;
+.review-stars {
+  display: flex;
+}
+
+.star {
+  font-size: 26rpx;
+  color: #E4E9F0;
+
+  &.filled {
+    color: $warning-color;
+  }
 }
 
 .review-content {
   display: block;
   font-size: $font-size-base;
   color: $text-color-secondary;
-  margin-top: 8rpx;
-  line-height: 1.6;
+  margin-top: 10rpx;
+  line-height: 1.7;
 }
 
 .review-time {
   display: block;
   font-size: $font-size-xs;
   color: $text-color-disabled;
-  margin-top: 8rpx;
+  margin-top: 10rpx;
 }
 
+/* 底部栏 — 玻璃拟态 */
 .bottom-bar {
   position: fixed;
   bottom: 0;
   left: 0;
   right: 0;
-  padding: $spacing-sm $spacing-base;
-  background-color: $bg-color;
-  box-shadow: 0 -2rpx 16rpx rgba(0, 0, 0, 0.06);
+  padding: 16rpx $spacing-base;
+  padding-bottom: calc(16rpx + env(safe-area-inset-bottom));
+  background: $glass-bg;
+  backdrop-filter: $glass-blur;
+  -webkit-backdrop-filter: $glass-blur;
+  box-shadow: 0 -4rpx 24rpx rgba(0, 0, 0, 0.06);
+  border-top: $glass-border;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
+.bottom-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.bottom-spec {
+  font-size: $font-size-sm;
+  color: $text-color-secondary;
+}
+
+.bottom-price {
+  font-size: 40rpx;
+  font-weight: 700;
+  color: $warning-color;
+  margin-top: 4rpx;
+}
+
+.book-btn {
+  background: $primary-gradient !important;
+  border: none !important;
+  box-shadow: 0 6rpx 24rpx rgba(58, 123, 247, 0.3);
+  font-weight: 600 !important;
+  min-width: 220rpx;
+  transition: transform $transition-fast;
+
+  &:active {
+    transform: scale(0.96);
+  }
+}
+
+/* 加载页 */
 .loading-page {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   height: 100vh;
+  background-color: $bg-color-grey;
 }
 
 .loading-text {
-  margin-top: $spacing-md;
+  margin-top: 24rpx;
   font-size: $font-size-base;
   color: $text-color-hint;
 }

@@ -1,21 +1,26 @@
 <template>
   <view class="service-card" @click="handleClick" :class="{ 'has-shadow': shadow }">
     <view class="card-body">
+      <image
+        v-if="data.coverImage"
+        :src="data.coverImage"
+        class="card-cover"
+        mode="aspectFill"
+      />
       <view class="card-info">
         <text class="card-name">{{ data.name }}</text>
-        <view class="card-tags" v-if="data.tags && data.tags.length">
-          <text v-for="tag in data.tags" :key="tag" class="card-tag">{{ tag }}</text>
-        </view>
         <text class="card-desc">{{ data.description }}</text>
-        <view class="card-meta">
-          <text class="card-rating">⭐ {{ data.rating }}</text>
-          <text class="card-sales">已售 {{ data.sales }}</text>
-          <text class="card-duration" v-if="data.duration">⏱ {{ data.duration }}</text>
+        <view class="card-meta" v-if="data.specs && data.specs.length">
+          <text
+            v-for="spec in data.specs.slice(0, 2)"
+            :key="spec.specId"
+            class="card-spec"
+          >{{ spec.name }} · ⏱ {{ spec.duration }}分钟</text>
         </view>
       </view>
       <view class="card-price">
-        <text class="price-num">¥{{ data.price }}</text>
-        <text class="price-unit">/{{ data.unit || '次' }}</text>
+        <text class="price-num">¥{{ data.minPrice || (data.specs && data.specs[0]?.price) || '--' }}</text>
+        <text class="price-label">起</text>
       </view>
     </view>
   </view>
@@ -42,49 +47,49 @@ function handleClick() {
 
 <style lang="scss" scoped>
 .service-card {
-  background: #fff;
-  border-radius: 16rpx;
+  background: linear-gradient(135deg, rgba(255,255,255,0.6) 0%, rgba(248,251,255,0.55) 100%);
+  backdrop-filter: $glass-blur;
+  -webkit-backdrop-filter: $glass-blur;
+  border-radius: $radius-md;
   margin-bottom: 16rpx;
   padding: 24rpx;
+  border-left: 6rpx solid rgba(58, 123, 247, 0.3);
+  transition: transform $transition-fast, box-shadow $transition-fast;
 
   &.has-shadow {
-    box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.06);
+    box-shadow: 0 4rpx 20rpx rgba(58, 123, 247, 0.06);
   }
 
   &:active {
-    background-color: #f5f5f5;
+    transform: scale(0.98);
+    box-shadow: 0 2rpx 12rpx rgba(58, 123, 247, 0.1);
   }
 }
 
 .card-body {
   display: flex;
-  justify-content: space-between;
+}
+
+.card-cover {
+  width: 130rpx;
+  height: 130rpx;
+  border-radius: 12rpx;
+  margin-right: 20rpx;
+  flex-shrink: 0;
+  background-color: $bg-color-grey;
 }
 
 .card-info {
   flex: 1;
-  margin-right: 24rpx;
+  margin-right: 16rpx;
+  min-width: 0;
 }
 
 .card-name {
-  font-size: 32rpx;
+  font-size: 30rpx;
   font-weight: 600;
-  color: #333;
+  color: $text-color;
   line-height: 1.4;
-}
-
-.card-tags {
-  display: flex;
-  margin-top: 8rpx;
-}
-
-.card-tag {
-  font-size: 20rpx;
-  color: #4A90D9;
-  background-color: #EBF4FD;
-  padding: 2rpx 12rpx;
-  border-radius: 4rpx;
-  margin-right: 8rpx;
 }
 
 .card-desc {
@@ -93,22 +98,25 @@ function handleClick() {
   -webkit-line-clamp: 2;
   overflow: hidden;
   font-size: 24rpx;
-  color: #666;
+  color: $text-color-secondary;
   margin-top: 8rpx;
   line-height: 1.5;
 }
 
 .card-meta {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  margin-top: 12rpx;
-  font-size: 20rpx;
-  color: #999;
-  gap: 24rpx;
+  margin-top: 10rpx;
+  gap: 8rpx;
 }
 
-.card-rating {
-  color: #FAAD14;
+.card-spec {
+  font-size: 20rpx;
+  color: $primary-color;
+  background-color: $primary-bg;
+  padding: 4rpx 12rpx;
+  border-radius: 6rpx;
   font-weight: 500;
 }
 
@@ -117,18 +125,20 @@ function handleClick() {
   flex-direction: column;
   align-items: flex-end;
   justify-content: center;
-  min-width: 140rpx;
+  min-width: 100rpx;
+  flex-shrink: 0;
 }
 
 .price-num {
   font-size: 36rpx;
   font-weight: 700;
-  color: #FF4D4F;
+  color: $warning-color;
+  line-height: 1.1;
 }
 
-.price-unit {
+.price-label {
   font-size: 20rpx;
-  color: #999;
-  margin-top: 4rpx;
+  color: $text-color-hint;
+  margin-top: 2rpx;
 }
 </style>

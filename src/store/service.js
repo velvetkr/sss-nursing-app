@@ -1,7 +1,13 @@
 /**
  * Pinia — 服务项目状态管理
  *
- * 管理：服务分类、服务列表、搜索、详情
+ * 对齐 API v1.0（catalog-service）：
+ * - 分类: /api/v1/categories
+ * - 列表: /api/v1/items?categoryId=&page=&size=
+ * - 详情: /api/v1/items/{id}
+ * - 搜索: /api/v1/items?keyword=&categoryId=&page=&size=
+ * - 分页响应: { list, total, page, size }
+ * - 规格数组 specs: [{ specId, name, price, originalPrice, duration }]
  */
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
@@ -9,78 +15,145 @@ import http from '@/utils/request.js'
 
 export const useServiceStore = defineStore('service', () => {
   // ===== 状态 =====
-  const categories = ref([])       // 服务分类列表
-  const services = ref([])         // 服务项目列表
-  const currentService = ref(null) // 当前查看的服务详情
-  const searchKeyword = ref('')    // 搜索关键词
-  const activeCategory = ref(null) // 当前选中分类
+  const categories = ref([])
+  const services = ref([])          // 当前列表数据
+  const total = ref(0)              // 总条数
+  const currentPage = ref(1)
+  const pageSize = ref(20)
+  const currentService = ref(null)  // 服务详情
+  const searchKeyword = ref('')
+  const activeCategoryId = ref(null)
   const loading = ref(false)
 
   // ===== 计算属性 =====
-  const filteredServices = computed(() => {
-    let list = services.value
-    if (activeCategory.value) {
-      list = list.filter((s) => s.categoryId === activeCategory.value)
-    }
-    if (searchKeyword.value) {
-      const kw = searchKeyword.value.toLowerCase()
-      list = list.filter(
-        (s) =>
-          s.name.toLowerCase().includes(kw) ||
-          (s.description && s.description.toLowerCase().includes(kw))
-      )
-    }
-    return list
+  const hasMore = computed(() => {
+    return services.value.length < total.value
   })
 
   // ===== 方法 =====
 
   /** 获取服务分类 */
   async function fetchCategories() {
-    const res = await http.get('/api/service/categories')
+    const res = await http.get('/api/v1/categories')
     categories.value = res.data || []
+    return categories.value
   }
 
-  /** 获取服务列表 */
+  /**
+   * 获取服务列表（支持分类筛选 + 分页）
+   * @param {Object} params - { categoryId, page, size }
+   */
   async function fetchServices(params = {}) {
     loading.value = true
     try {
-      const res = await http.get('/api/service/list', params)
-      services.value = res.data || []
+      const query = {}
+      if (params.categoryId) query.categoryId = params.categoryId
+      if (params.page) query.page = params.page
+      else query.page = currentPage.value
+      if (params.size) query.size = params.size
+      else query.size = pageSize.value
+
+      const res = await http.get('/api/v1/items', query)
+      const data = res.data
+      services.value = data.list || []
+      total.value = data.total || 0
+      currentPage.value = data.page || 1
+      pageSize.value = data.size || 20
+      return { list: services.value, total: total.value }
+    } finally {
+      loading.value = false
+    }
+  }
+
+  /** 加载更多（追加分页） */
+  async function loadMore() {
+    if (!hasMore.value) return { list: [], total: total.value }
+    loading.value = true
+    try {
+      const query = {
+        page: currentPage.value + 1,
+        size: pageSize.value,
+      }
+      if (activeCategoryId.value) query.categoryId = activeCategoryId.value
+      if (searchKeyword.value) query.keyword = searchKeyword.value
+
+      const res = await http.get('/api/v1/items', query)
+      const data = res.data
+      services.value = [...services.value, ...(data.list || [])]
+      total.value = data.total || 0
+      currentPage.value = data.page || currentPage.value + 1
+      return { list: services.value, total: total.value }
     } finally {
       loading.value = false
     }
   }
 
   /** 获取服务详情 */
-  async function fetchServiceDetail(id) {
-    const res = await http.get(`/api/service/detail`, { id })
-    currentService.value = res.data
-    return currentService.value
+  async function fetchServiceDetail(itemId) {
+    loading.value = true
+    try {
+      const res = await http.get(`/api/v1/items/${itemId}`)
+      currentService.value = res.data
+      return currentService.value
+    } finally {
+      loading.value = false
+    }
   }
 
-  /** 搜索服务 */
-  function setSearchKeyword(keyword) {
+  /**
+   * 搜索服务项目
+   * @param {string} keyword - 搜索关键词
+   * @param {Object} params - { categoryId, page, size }
+   */
+  async function searchServices(keyword, params = {}) {
     searchKeyword.value = keyword
+    loading.value = true
+    try {
+      const query = { keyword, page: params.page || 1, size: params.size || 20 }
+      if (params.categoryId) query.categoryId = params.categoryId
+
+      const res = await http.get('/api/v1/items', query)
+      const data = res.data
+      services.value = data.list || []
+      total.value = data.total || 0
+      currentPage.value = data.page || 1
+      return { list: services.value, total: total.value }
+    } finally {
+      loading.value = false
+    }
   }
 
   /** 切换分类 */
   function setActiveCategory(categoryId) {
-    activeCategory.value = categoryId
+    activeCategoryId.value = categoryId
+  }
+
+  /** 重置搜索/分类状态 */
+  function reset() {
+    services.value = []
+    total.value = 0
+    currentPage.value = 1
+    searchKeyword.value = ''
+    activeCategoryId.value = null
   }
 
   return {
     categories,
     services,
+    total,
+    currentPage,
+    pageSize,
     currentService,
     searchKeyword,
-    activeCategory,
+    activeCategoryId,
     loading,
-    filteredServices,
+    hasMore,
     fetchCategories,
     fetchServices,
+    loadMore,
     fetchServiceDetail,
-    setSearchKeyword,
+    searchServices,
     setActiveCategory,
+    reset,
   }
 })

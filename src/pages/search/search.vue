@@ -1,9 +1,12 @@
 <template>
   <view class="search-page">
+    <!-- 背景弥散光 -->
+    <view class="bg-glow bg-glow-top" />
+
     <!-- 搜索栏 -->
     <view class="search-header">
       <view class="search-input-wrap">
-        <u-icon name="search" size="18" color="#999" />
+        <u-icon name="search" size="18" color="#6B7B8D" />
         <input
           v-model="keyword"
           class="search-input"
@@ -15,7 +18,7 @@
           v-if="keyword"
           name="close-circle-fill"
           size="18"
-          color="#C0C4CC"
+          color="#C5CDD8"
           @click="clearSearch"
         />
       </view>
@@ -26,7 +29,7 @@
     <view v-if="!keyword && history.length" class="history-section">
       <view class="history-header">
         <text class="history-title">搜索历史</text>
-        <u-icon name="trash" size="18" color="#999" @click="clearHistory" />
+        <u-icon name="trash" size="18" color="#98A5B3" @click="clearHistory" />
       </view>
       <view class="history-list">
         <text
@@ -49,27 +52,34 @@
       </view>
 
       <!-- 空结果 -->
-      <view v-else-if="results.length === 0" class="empty-result">
-        <u-icon name="frown" size="60" color="#C0C4CC" />
+      <view v-else-if="results.length === 0" class="empty-wrap">
+        <u-icon name="frown" size="60" color="#C5CDD8" />
         <text class="empty-title">未找到相关服务</text>
         <text class="empty-desc">换个关键词试试吧</text>
       </view>
 
       <!-- 结果列表 -->
       <view v-else class="result-list">
-        <text class="result-count">找到 {{ results.length }} 个相关服务</text>
+        <text class="result-count">找到 {{ total }} 个相关服务</text>
         <view
           v-for="item in results"
-          :key="item.id"
+          :key="item.itemId"
           class="result-card"
-          @click="goDetail(item.id)"
+          @click="goDetail(item.itemId)"
         >
+          <image
+            v-if="item.coverImage"
+            :src="item.coverImage"
+            class="result-cover"
+            mode="aspectFill"
+          />
           <view class="card-info">
-            <text class="card-name" v-html="highlight(item.name)"></text>
-            <text class="card-desc" v-html="highlight(item.description || '')"></text>
+            <text class="card-name" v-html="highlight(item.name)" />
+            <text class="card-category">{{ item.categoryName }}</text>
+            <text class="card-desc" v-html="highlight(item.description || '')" />
             <view class="card-meta">
-              <text class="card-rating">⭐ {{ item.rating }}</text>
-              <text class="card-price">¥{{ item.price }}/{{ item.unit }}</text>
+              <text class="card-specs">{{ (item.specs || []).map(s => s.name).join(' / ') }}</text>
+              <text class="card-price">¥{{ item.minPrice }} 起</text>
             </view>
           </view>
         </view>
@@ -80,10 +90,12 @@
 
 <script setup>
 import { ref } from 'vue'
-import http from '@/utils/request.js'
+import { useServiceStore } from '@/store/service.js'
 
+const serviceStore = useServiceStore()
 const keyword = ref('')
 const results = ref([])
+const total = ref(0)
 const searching = ref(false)
 const history = ref(JSON.parse(uni.getStorageSync('searchHistory') || '[]'))
 
@@ -91,7 +103,6 @@ function onSearch() {
   const kw = keyword.value.trim()
   if (!kw) return
 
-  // 保存搜索历史
   if (!history.value.includes(kw)) {
     history.value.unshift(kw)
     if (history.value.length > 10) history.value.pop()
@@ -104,10 +115,12 @@ function onSearch() {
 async function doSearch(kw) {
   searching.value = true
   try {
-    const res = await http.get('/api/service/list', { keyword: kw })
-    results.value = res.data || []
+    const { list, total: t } = await serviceStore.searchServices(kw)
+    results.value = list
+    total.value = t
   } catch {
     results.value = []
+    total.value = 0
   } finally {
     searching.value = false
   }
@@ -139,7 +152,7 @@ function goDetail(id) {
 function highlight(text) {
   if (!keyword.value) return text
   const reg = new RegExp(keyword.value, 'gi')
-  return text.replace(reg, (match) => `<text style="color:#4A90D9;font-weight:600;">${match}</text>`)
+  return text.replace(reg, (match) => `<text style="color:#3A7BF7;font-weight:600;">${match}</text>`)
 }
 </script>
 
@@ -147,12 +160,32 @@ function highlight(text) {
 .search-page {
   min-height: 100vh;
   background-color: $bg-color-grey;
+  position: relative;
+  overflow: hidden;
 }
 
+/* 背景弥散光 */
+.bg-glow {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80rpx);
+  opacity: 0.5;
+  pointer-events: none;
+  z-index: 0;
+}
+.bg-glow-top {
+  width: 360rpx;
+  height: 360rpx;
+  background: radial-gradient(circle, rgba(58, 123, 247, 0.16), transparent 70%);
+  top: 200rpx;
+  right: -80rpx;
+}
+
+/* 搜索栏 */
 .search-header {
   display: flex;
   align-items: center;
-  padding: $spacing-sm $spacing-base;
+  padding: 16rpx $spacing-base;
   background-color: $bg-color;
 }
 
@@ -161,13 +194,14 @@ function highlight(text) {
   display: flex;
   align-items: center;
   background-color: $bg-color-grey;
-  border-radius: $radius-round;
-  padding: $spacing-sm $spacing-md;
+  border-radius: 32rpx;
+  padding: 16rpx 24rpx;
+  min-height: $touch-min;
 }
 
 .search-input {
   flex: 1;
-  margin: 0 $spacing-sm;
+  margin: 0 16rpx;
   font-size: $font-size-base;
   color: $text-color;
 }
@@ -175,20 +209,22 @@ function highlight(text) {
 .search-cancel {
   font-size: $font-size-base;
   color: $text-color-secondary;
-  margin-left: $spacing-md;
+  margin-left: 20rpx;
   flex-shrink: 0;
 }
 
+/* 搜索历史 */
 .history-section {
   background-color: $bg-color;
-  padding: $spacing-md $spacing-base;
+  padding: 24rpx $spacing-base;
+  margin-top: 4rpx;
 }
 
 .history-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: $spacing-md;
+  margin-bottom: 20rpx;
 }
 
 .history-title {
@@ -206,12 +242,21 @@ function highlight(text) {
   font-size: $font-size-sm;
   color: $text-color-secondary;
   background-color: $bg-color-grey;
-  padding: $spacing-xs $spacing-md;
-  border-radius: $radius-round;
-  margin-right: $spacing-sm;
-  margin-bottom: $spacing-sm;
+  padding: 10rpx 24rpx;
+  border-radius: 24rpx;
+  margin-right: 16rpx;
+  margin-bottom: 16rpx;
+  min-height: $touch-min;
+  display: flex;
+  align-items: center;
+
+  &:active {
+    background-color: $primary-bg;
+    color: $primary-color;
+  }
 }
 
+/* 搜索结果 */
 .result-section {
   padding: $spacing-sm $spacing-base;
 }
@@ -224,12 +269,12 @@ function highlight(text) {
 }
 
 .searching-text {
-  margin-left: $spacing-sm;
+  margin-left: 16rpx;
   font-size: $font-size-base;
   color: $text-color-hint;
 }
 
-.empty-result {
+.empty-wrap {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -239,33 +284,69 @@ function highlight(text) {
 .empty-title {
   font-size: $font-size-md;
   color: $text-color-secondary;
-  margin-top: $spacing-md;
+  margin-top: 24rpx;
 }
 
 .empty-desc {
   font-size: $font-size-sm;
   color: $text-color-hint;
-  margin-top: $spacing-xs;
+  margin-top: 8rpx;
 }
 
 .result-count {
   font-size: $font-size-sm;
   color: $text-color-hint;
-  margin-bottom: $spacing-sm;
+  margin-bottom: 16rpx;
   display: block;
 }
 
+/* 结果卡片 — 玻璃拟态 */
 .result-card {
-  background: $bg-color;
-  border-radius: $radius-base;
-  padding: $spacing-md;
-  margin-bottom: $spacing-sm;
+  background: linear-gradient(135deg, rgba(255,255,255,0.6) 0%, rgba(248,251,255,0.55) 100%);
+  backdrop-filter: $glass-blur;
+  -webkit-backdrop-filter: $glass-blur;
+  border-radius: $radius-md;
+  padding: 24rpx;
+  margin-bottom: 16rpx;
+  display: flex;
+  box-shadow: 0 4rpx 20rpx rgba(58, 123, 247, 0.06);
+  border-left: 6rpx solid rgba(58, 123, 247, 0.3);
+  transition: transform $transition-fast;
+
+  &:active {
+    transform: scale(0.98);
+  }
+}
+
+.result-cover {
+  width: 110rpx;
+  height: 110rpx;
+  border-radius: 10rpx;
+  margin-right: 20rpx;
+  flex-shrink: 0;
+  background-color: $bg-color-grey;
+}
+
+.card-info {
+  flex: 1;
+  min-width: 0;
 }
 
 .card-name {
   font-size: $font-size-md;
   font-weight: 500;
   color: $text-color;
+}
+
+.card-category {
+  font-size: 20rpx;
+  color: $primary-color;
+  background-color: $primary-bg;
+  padding: 4rpx 14rpx;
+  border-radius: 6rpx;
+  display: inline-block;
+  margin-top: 6rpx;
+  font-weight: 500;
 }
 
 .card-desc {
@@ -275,24 +356,30 @@ function highlight(text) {
   overflow: hidden;
   font-size: $font-size-sm;
   color: $text-color-secondary;
-  margin-top: 8rpx;
+  margin-top: 10rpx;
 }
 
 .card-meta {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-top: 12rpx;
+  margin-top: 14rpx;
 }
 
-.card-rating {
-  font-size: $font-size-xs;
-  color: #FAAD14;
+.card-specs {
+  font-size: 20rpx;
+  color: $text-color-hint;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .card-price {
   font-size: $font-size-base;
   font-weight: 600;
-  color: $error-color;
+  color: $warning-color;
+  flex-shrink: 0;
+  margin-left: 16rpx;
 }
 </style>

@@ -1,31 +1,99 @@
 /**
  * 网络请求层 — uni.request 封装
  *
- * 功能：Token 注入、异常拦截、请求/响应拦截、超时处理
+ * 对齐后端 API 规范 v1.0：
+ * - 统一响应 { code: 0, message, data } — code=0 为成功
+ * - 全局错误码 1000-1999 通用 / 2000-2999 用户 / 3000-3999 订单 / 4000-4999 评价投诉
+ * - JWT Bearer Token 鉴权，401 + code=1002/1003 跳转登录
+ * - 支持 Idempotent-Key 幂等请求头
+ * - 支持 PATCH / DELETE 方法
  */
 import { getToken, removeToken } from './storage.js'
 
-const BASE_URL = '' // 后端 API 基地址，联调时替换
+// ========== 环境配置 ==========
+// DEV 环境指向 Gateway，PROD 由 CI/CD 写入
+const BASE_URL = 'http://localhost:8080'
 const TIMEOUT = 15000
 
-// 请求中的 pending 状态，避免重复提交
-const pendingMap = new Map()
-
-function getRequestKey(config) {
-  const { url, method, data } = config
-  return `${method || 'GET'}_${url}_${JSON.stringify(data || {})}`
+// ========== 全局错误码映射（按区间） ==========
+const ERROR_MESSAGES = {
+  // 通用 1000-1999
+  1000: '请求参数有误',
+  1001: '请求格式错误',
+  1002: '登录已过期，请重新登录',
+  1003: '账号已在其他设备登录',
+  1004: '暂无权限执行此操作',
+  1005: '请求的资源不存在',
+  1006: '操作冲突，请勿重复提交',
+  1007: '暂不满足操作条件',
+  1008: '操作过于频繁，请稍后重试',
+  // 用户 2000-2999
+  2001: '验证码发送过于频繁，请60秒后重试',
+  2002: '今日验证码发送次数已达上限',
+  2003: '该手机号已被注册',
+  2004: '该手机号未注册',
+  2006: '验证码错误',
+  2007: '验证码已过期',
+  2008: '该手机号已注册',
+  2009: '密码不符合安全要求',
+  2010: '密码错误',
+  2011: '账号已被禁用',
+  2012: '新密码不能与旧密码相同',
+  // 订单 3000-3999
+  3001: '下单令牌已过期，请重新提交',
+  3002: '该时段已被预约',
+  3003: '服务项目已下架',
+  3004: '规格已下架',
+  3005: '价格已变动，请重新确认',
+  3006: '地址不存在或已被删除',
+  3007: '订单不存在',
+  3008: '无权查看该订单',
+  3009: '当前状态不可取消',
+  // 评价投诉 4000-4999
+  4002: '该订单暂不可评价',
+  4003: '该订单已评价',
 }
 
+/** 根据错误码获取友好提示 */
+function getErrorMessage(code, fallback) {
+  return ERROR_MESSAGES[code] || fallback || '服务繁忙，请稍后重试'
+}
+
+/** 判断是否为鉴权失败（需跳登录页） */
+function isAuthError(code, httpStatus) {
+  return httpStatus === 401 || code === 1002 || code === 1003
+}
+
+// ========== 请求中的幂等键缓存 ==========
+let _idempotentKey = null
+
+/** 设置全局幂等键（下单流程前调用） */
+export function setIdempotentKey(key) {
+  _idempotentKey = key
+}
+
+/** 获取当前幂等键 */
+export function getIdempotentKey() {
+  return _idempotentKey
+}
+
+/** 清除幂等键 */
+export function clearIdempotentKey() {
+  _idempotentKey = null
+}
+
+// ========== 核心请求方法 ==========
+
 /**
- * 统一请求方法
- * @param {Object} options - 请求配置
+ * 统一请求
+ * @param {Object} options - { url, method, data, header, timeout, idempotent }
  * @returns {Promise}
  */
 function request(options = {}) {
   return new Promise((resolve, reject) => {
     const token = getToken()
 
-    // 请求头
+    // 构建请求头
     const header = {
       'Content-Type': 'application/json',
       ...options.header,
@@ -33,8 +101,12 @@ function request(options = {}) {
     if (token) {
       header['Authorization'] = `Bearer ${token}`
     }
+    // 幂等键：优先使用 options 传入的，其次全局的
+    const idempotentKey = options.idempotent || _idempotentKey
+    if (idempotentKey) {
+      header['Idempotent-Key'] = idempotentKey
+    }
 
-    // 发起请求
     uni.request({
       url: BASE_URL + options.url,
       method: options.method || 'GET',
@@ -44,37 +116,49 @@ function request(options = {}) {
       success: (res) => {
         const { statusCode, data } = res
 
-        // HTTP 状态码判断
-        if (statusCode === 200) {
-          // 业务状态码判断（假设后端返回 { code, data, message }）
-          if (data.code === 0 || data.code === 200) {
+        // 业务成功：code === 0
+        if (statusCode === 200 || statusCode === 201) {
+          if (data.code === 0) {
             resolve(data)
-          } else if (data.code === 401) {
-            // 登录态过期
+          } else if (isAuthError(data.code, statusCode)) {
+            // 登录态过期 / Token 黑名单
             removeToken()
-            uni.showToast({ title: '登录已过期，请重新登录', icon: 'none' })
+            uni.showToast({ title: getErrorMessage(data.code, '请重新登录'), icon: 'none' })
             setTimeout(() => {
               uni.reLaunch({ url: '/pages/login/login' })
             }, 1500)
             reject(data)
           } else {
-            uni.showToast({ title: data.message || '请求失败', icon: 'none' })
+            // 其他业务错误
+            const msg = getErrorMessage(data.code, data.message)
+            uni.showToast({ title: msg, icon: 'none' })
             reject(data)
           }
         } else if (statusCode === 401) {
           removeToken()
-          uni.showToast({ title: '登录已过期', icon: 'none' })
+          uni.showToast({ title: '登录已过期，请重新登录', icon: 'none' })
           setTimeout(() => {
             uni.reLaunch({ url: '/pages/login/login' })
           }, 1500)
           reject(res)
+        } else if (statusCode === 403) {
+          uni.showToast({ title: '暂无权限', icon: 'none' })
+          reject(res)
+        } else if (statusCode === 404) {
+          uni.showToast({ title: '请求的资源不存在', icon: 'none' })
+          reject(res)
+        } else if (statusCode === 429) {
+          uni.showToast({ title: '操作过于频繁，请稍后重试', icon: 'none' })
+          reject(res)
+        } else if (statusCode >= 500) {
+          uni.showToast({ title: '服务器繁忙，请稍后重试', icon: 'none' })
+          reject(res)
         } else {
-          uni.showToast({ title: `网络错误 (${statusCode})`, icon: 'none' })
+          uni.showToast({ title: `请求异常 (${statusCode})`, icon: 'none' })
           reject(res)
         }
       },
       fail: (err) => {
-        // 网络异常
         const msg = err.errMsg || '网络连接失败'
         if (msg.includes('timeout')) {
           uni.showToast({ title: '请求超时，请重试', icon: 'none' })
@@ -99,10 +183,14 @@ const http = {
   put(url, data, options = {}) {
     return request({ url, method: 'PUT', data, ...options })
   },
+  patch(url, data, options = {}) {
+    return request({ url, method: 'PATCH', data, ...options })
+  },
   delete(url, data, options = {}) {
     return request({ url, method: 'DELETE', data, ...options })
   },
-  /** 上传文件 */
+
+  /** 上传文件（multipart/form-data） */
   upload(url, filePath, formData = {}, options = {}) {
     const token = getToken()
     return new Promise((resolve, reject) => {
@@ -116,7 +204,12 @@ const http = {
         success: (res) => {
           try {
             const data = JSON.parse(res.data)
-            resolve(data)
+            if (data.code === 0) {
+              resolve(data)
+            } else {
+              uni.showToast({ title: data.message || '上传失败', icon: 'none' })
+              reject(data)
+            }
           } catch {
             reject(res)
           }
