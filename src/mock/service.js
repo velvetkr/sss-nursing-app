@@ -149,6 +149,15 @@ serviceItems.forEach((item) => {
   item.createTime = '2026-07-01T10:00:00+08:00'
 })
 
+export function getMockServiceItem(itemId) {
+  return serviceItems.find((item) => item.itemId === Number(itemId) && item.status === 1) || null
+}
+
+export function getMockServiceSpec(itemId, specId) {
+  const item = getMockServiceItem(itemId)
+  return item?.specs.find((spec) => spec.specId === Number(specId) && spec.status === 1) || null
+}
+
 // ========== 工具函数 ==========
 function getQueryParam(url, param) {
   const regex = new RegExp(`[?&]${param}=([^&]*)`)

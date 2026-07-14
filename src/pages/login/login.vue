@@ -89,8 +89,8 @@
               :disabled="countdown > 0 || phone.length !== 11"
               size="small"
               shape="round"
-              @click="sendCode"
               class="code-btn"
+              @click="sendCode"
             >
               <text v-if="countdown > 0">{{ countdown }}s</text>
               <text v-else>获取验证码</text>
@@ -105,8 +105,8 @@
             shape="round"
             :loading="submitting"
             :disabled="!canSubmit"
-            @click="handleLogin"
             class="submit-btn"
+            @click="handleLogin"
           >
             登 录
           </u-button>
@@ -145,7 +145,7 @@ let timer = null
 const canSubmit = computed(() => {
   if (phone.value.length !== 11 || submitting.value) return false
   if (loginMode.value === 'password') {
-    return password.value.length >= 8
+    return password.value.length >= 6
   }
   return code.value.length === 6
 })
@@ -195,7 +195,7 @@ function goRegister() {
 <style lang="scss" scoped>
 .login-page {
   min-height: 100vh;
-  background-color: $bg-color-grey;
+  background: $page-gradient;
   display: flex;
   flex-direction: column;
   position: relative;
@@ -231,7 +231,7 @@ function goRegister() {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 80rpx 0 40rpx;
+  padding: 72rpx 0 38rpx;
   position: relative;
   z-index: 1;
 }
@@ -239,7 +239,7 @@ function goRegister() {
 .logo-icon {
   width: 120rpx;
   height: 120rpx;
-  border-radius: 32rpx;
+  border-radius: 36rpx;
   background: $primary-gradient;
   display: flex;
   align-items: center;
@@ -273,10 +273,10 @@ function goRegister() {
   background: linear-gradient(180deg, rgba(255,255,255,0.65) 0%, rgba(248,251,255,0.58) 100%);
   backdrop-filter: $glass-blur;
   -webkit-backdrop-filter: $glass-blur;
-  border-radius: $radius-lg;
-  padding: 40rpx $spacing-lg;
-  box-shadow: 0 4rpx 24rpx rgba(58, 123, 247, 0.08);
-  border-top: 6rpx solid rgba(58, 123, 247, 0.4);
+  border-radius: 32rpx;
+  padding: 38rpx $spacing-lg;
+  box-shadow: $shadow-float;
+  border: $glass-border-soft;
 }
 
 /* 登录方式 Tab */
@@ -284,16 +284,22 @@ function goRegister() {
   display: flex;
   justify-content: center;
   margin-bottom: 44rpx;
-  gap: 56rpx;
+  gap: 20rpx;
+  padding: 8rpx;
+  border-radius: $radius-round;
+  background: $bg-color-grey;
 }
 
 .tab-item {
-  padding-bottom: 14rpx;
-  border-bottom: 4rpx solid transparent;
+  flex: 1;
+  padding: 16rpx 12rpx;
+  border-radius: $radius-round;
+  text-align: center;
   transition: all $transition-base;
 
   &.active {
-    border-bottom-color: $primary-color;
+    background: #fff;
+    box-shadow: $shadow-sm;
 
     .tab-text {
       color: $primary-color;
@@ -310,7 +316,7 @@ function goRegister() {
 
 /* 输入组 */
 .input-group {
-  margin-bottom: 32rpx;
+  margin-bottom: 28rpx;
 }
 
 .input-label {
@@ -363,7 +369,7 @@ function goRegister() {
 .submit-btn {
   width: 100%;
   border-radius: $radius-round !important;
-  height: 96rpx !important;
+  height: 88rpx !important;
   font-size: 34rpx !important;
   font-weight: 600 !important;
   letter-spacing: 8rpx;

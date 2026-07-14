@@ -59,6 +59,10 @@ function getUserAddresses() {
   return addresses.filter((a) => a.isDeleted !== 1)
 }
 
+export function getMockAddress(addressId) {
+  return addresses.find((address) => address.addressId === Number(addressId) && address.isDeleted !== 1) || null
+}
+
 // ========== 接口 Mock ==========
 
 // 1. 地址列表

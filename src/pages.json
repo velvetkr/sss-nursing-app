@@ -35,6 +35,50 @@
       "style": {
         "navigationBarTitleText": "搜索"
       }
+    },
+    {
+      "path": "pages/booking/booking",
+      "style": { "navigationBarTitleText": "确认预约" }
+    },
+    {
+      "path": "pages/address/address-list",
+      "style": { "navigationBarTitleText": "服务地址" }
+    },
+    {
+      "path": "pages/address/address-edit",
+      "style": { "navigationBarTitleText": "编辑地址" }
+    },
+    {
+      "path": "pages/payment-result/payment-result",
+      "style": { "navigationBarTitleText": "支付结果" }
+    },
+    {
+      "path": "pages/account/account",
+      "style": { "navigationBarTitleText": "我的" }
+    },
+    {
+      "path": "pages/order/order-list",
+      "style": { "navigationBarTitleText": "我的订单" }
+    },
+    {
+      "path": "pages/order/order-detail",
+      "style": { "navigationBarTitleText": "订单详情" }
+    },
+    {
+      "path": "pages/review/review-submit",
+      "style": { "navigationBarTitleText": "评价服务" }
+    },
+    {
+      "path": "pages/complaint/complaint-submit",
+      "style": { "navigationBarTitleText": "提交投诉" }
+    },
+    {
+      "path": "pages/complaint/complaint-list",
+      "style": { "navigationBarTitleText": "投诉记录" }
+    },
+    {
+      "path": "pages/complaint/complaint-detail",
+      "style": { "navigationBarTitleText": "投诉进度" }
     }
   ],
   "globalStyle": {
@@ -48,8 +92,8 @@
   "tabBar": {
     "color": "#999999",
     "selectedColor": "#4A90D9",
-    "backgroundColor": "#FFFFFF",
-    "borderStyle": "black",
+    "backgroundColor": "#F9FBFF",
+    "borderStyle": "white",
     "list": [
       {
         "pagePath": "pages/index/index",
@@ -60,7 +104,7 @@
         "text": "服务"
       },
       {
-        "pagePath": "pages/login/login",
+        "pagePath": "pages/account/account",
         "text": "我的"
       }
     ]

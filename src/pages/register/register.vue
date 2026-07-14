@@ -52,8 +52,8 @@
               :disabled="countdown > 0 || phone.length !== 11"
               size="small"
               shape="round"
-              @click="sendCode"
               class="code-btn"
+              @click="sendCode"
             >
               <text v-if="countdown > 0">{{ countdown }}s</text>
               <text v-else>获取验证码</text>
@@ -114,8 +114,8 @@
             shape="round"
             :loading="submitting"
             :disabled="!canSubmit"
-            @click="handleRegister"
             class="submit-btn"
+            @click="handleRegister"
           >
             注 册
           </u-button>
@@ -219,7 +219,7 @@ function goLogin() {
 <style lang="scss" scoped>
 .register-page {
   min-height: 100vh;
-  background-color: $bg-color-grey;
+  background: $page-gradient;
   position: relative;
   overflow: hidden;
 }
@@ -249,7 +249,7 @@ function goLogin() {
 }
 
 .header {
-  padding: 60rpx $spacing-lg 36rpx;
+  padding: 72rpx $spacing-lg 40rpx;
   text-align: center;
   position: relative;
   z-index: 1;
@@ -279,10 +279,10 @@ function goLogin() {
   background: linear-gradient(180deg, rgba(255,255,255,0.65) 0%, rgba(248,251,255,0.58) 100%);
   backdrop-filter: $glass-blur;
   -webkit-backdrop-filter: $glass-blur;
-  border-radius: $radius-lg;
-  padding: 40rpx $spacing-lg;
-  box-shadow: 0 4rpx 24rpx rgba(58, 123, 247, 0.08);
-  border-top: 6rpx solid rgba(58, 123, 247, 0.4);
+  border-radius: 32rpx;
+  padding: 38rpx $spacing-lg;
+  box-shadow: $shadow-float;
+  border: $glass-border-soft;
 }
 
 .input-group {
@@ -319,7 +319,7 @@ function goLogin() {
   height: 60rpx !important;
   font-size: 24rpx !important;
   padding: 0 !important;
-  border-color: $primary-color !important;
+  border-color: rgba(58,123,247,0.28) !important;
   color: $primary-color !important;
 }
 
@@ -331,7 +331,7 @@ function goLogin() {
 .submit-btn {
   width: 100%;
   border-radius: $radius-round !important;
-  height: 96rpx !important;
+  height: 88rpx !important;
   font-size: 34rpx !important;
   font-weight: 600 !important;
   letter-spacing: 8rpx;

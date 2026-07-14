@@ -2,7 +2,7 @@
   <view class="empty-state">
     <u-icon :name="icon" :size="size" :color="iconColor" />
     <text class="empty-title">{{ title }}</text>
-    <text class="empty-desc" v-if="description">{{ description }}</text>
+    <text v-if="description" class="empty-desc">{{ description }}</text>
     <slot />
   </view>
 </template>
@@ -23,7 +23,13 @@ defineProps({
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 120rpx 0;
+  margin: 16rpx 0;
+  padding: 92rpx 24rpx;
+  border: $glass-border-soft;
+  border-radius: 28rpx;
+  background: $glass-bg-strong;
+  box-shadow: $shadow-sm;
+  backdrop-filter: $glass-blur;
 }
 
 .empty-title {

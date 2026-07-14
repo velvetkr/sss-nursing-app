@@ -15,8 +15,8 @@
       type="primary"
       :plain="true"
       size="small"
-      @click="handleClick"
       class="code-btn"
+      @click="handleClick"
     >
       获取验证码
     </u-button>
@@ -61,5 +61,9 @@ defineExpose({ start })
 
 .code-btn {
   min-width: 180rpx;
+  border-radius: $radius-round !important;
+  border-color: rgba(58, 123, 247, 0.28) !important;
+  color: $primary-color !important;
+  background: rgba(237, 244, 254, 0.82) !important;
 }
 </style>

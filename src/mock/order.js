@@ -11,6 +11,8 @@
  * - POST /api/v1/orders/pay/callback     → 支付宝回调（前端不直接调用）
  */
 import Mock from 'mockjs'
+import { getMockAddress } from './address.js'
+import { getMockServiceItem, getMockServiceSpec } from './service.js'
 
 const Random = Mock.Random
 
@@ -38,7 +40,8 @@ function generateOrderNo() {
 
 // 预设几条历史订单
 const presetOrders = [
-  { orderId: 20000, orderNo: '2026070120000', serviceItemName: '静脉采血', specName: '单次服务',
+  { orderId: 20000, orderNo: '2026070120000', serviceItemId: 401, serviceSpecId: 40101,
+    serviceItemName: '静脉采血', specName: '单次服务',
     specPrice: 80, totalAmount: 80, status: 2,
     receiverName: '张三', receiverPhone: '13800138000', addressDetail: '北京市朝阳区建国路88号6栋301',
     serviceDate: '2026-07-02', serviceTimeSlot: 'MORNING',
@@ -49,10 +52,11 @@ const presetOrders = [
       { action: 'complete', fromStatus: 1, toStatus: 2, remark: '服务完成', createTime: '2026-07-02T10:00:00+08:00' },
     ],
   },
-  { orderId: 19999, orderNo: '2026070119999', serviceItemName: '艾灸调理', specName: '5次套餐',
+  { orderId: 19999, orderNo: '2026070119999', serviceItemId: 301, serviceSpecId: 30103,
+    serviceItemName: '艾灸调理', specName: '5次套餐',
     specPrice: 550, totalAmount: 550, status: 1,
     receiverName: '张三', receiverPhone: '13800138000', addressDetail: '北京市朝阳区建国路88号6栋301',
-    serviceDate: '2026-07-08', serviceTimeSlot: 'AFTERNOON',
+    serviceDate: '2026-07-18', serviceTimeSlot: 'AFTERNOON',
     createTime: '2026-07-01T15:00:00+08:00',
     operationLogs: [
       { action: 'create', fromStatus: null, toStatus: 0, remark: '用户创建订单', createTime: '2026-07-01T15:00:00+08:00' },
@@ -109,33 +113,30 @@ Mock.mock(/\/api\/v1\/orders$/, 'post', (options) => {
   const orderId = nextOrderId++
   const orderNo = generateOrderNo()
 
-  // 模拟服务名（实际由后端从 catalog-service 获取）
-  const serviceNames = {
-    101: '上门输液护理', 102: '压疮护理', 103: '日常起居照料',
-    201: '康复运动指导', 202: '术后康复护理', 203: '推拿按摩',
-    301: '艾灸调理', 302: '拔罐刮痧',
-    401: '静脉采血', 402: 'PICC维护', 403: '鼻饲护理',
-    501: '心理陪伴聊天',
-  }
-  const specNames = { 1: '单次服务', 2: '3次套餐', 3: '5次套餐' }
-  // 从 specId 推算 spec 序号（模拟逻辑）
-  const specSeq = body.serviceSpecId % 100
-  const itemName = serviceNames[body.serviceItemId] || '护理服务'
-  const specName = specNames[specSeq] || '单次服务'
-  const specPrice = [80, 150, 220, 260, 300][specSeq - 1] || 150
+  const serviceItem = getMockServiceItem(body.serviceItemId)
+  const serviceSpec = getMockServiceSpec(body.serviceItemId, body.serviceSpecId)
+  const address = getMockAddress(body.addressId)
+
+  if (!serviceItem) return { code: 3003, message: '服务项目已下架', data: null }
+  if (!serviceSpec) return { code: 3004, message: '规格已下架', data: null }
+  if (!address) return { code: 3006, message: '地址不存在或已被删除', data: null }
 
   const order = {
     _idempotentKey: idempotentKey,
     orderId,
     orderNo,
-    serviceItemName: itemName,
-    specName,
-    specPrice,
-    totalAmount: specPrice,
+    serviceItemId: serviceItem.itemId,
+    serviceSpecId: serviceSpec.specId,
+    serviceItemName: serviceItem.name,
+    serviceCoverImage: serviceItem.coverImage,
+    specName: serviceSpec.name,
+    specPrice: serviceSpec.price,
+    totalAmount: serviceSpec.price,
     status: 0, // 待支付
-    receiverName: '张三',
-    receiverPhone: '138****5678',
-    addressDetail: '北京市朝阳区建国路88号6栋301',
+    addressId: address.addressId,
+    receiverName: address.receiverName,
+    receiverPhone: address.receiverPhone,
+    addressDetail: `${address.province}${address.city}${address.district}${address.detailAddress}`,
     serviceDate: body.serviceDate,
     serviceTimeSlot: body.serviceTimeSlot || 'MORNING',
     remark: body.remark || '',
@@ -182,6 +183,9 @@ Mock.mock(/\/api\/v1\/orders\?/, 'get', (options) => {
     orderId: o.orderId,
     orderNo: o.orderNo,
     serviceItemName: o.serviceItemName,
+    serviceItemId: o.serviceItemId,
+    serviceSpecId: o.serviceSpecId,
+    serviceCoverImage: o.serviceCoverImage,
     specName: o.specName,
     specPrice: o.specPrice,
     totalAmount: o.totalAmount,
@@ -232,17 +236,18 @@ Mock.mock(/\/api\/v1\/orders\/\d+\/cancel/, 'post', (options) => {
   }
 
   const body = options.body ? JSON.parse(options.body) : {}
+  const previousStatus = order.status
   order.status = 3 // 已取消
   order.cancelReason = body.cancelReason || ''
   order.operationLogs.push({
     action: 'cancel',
-    fromStatus: order.status === 3 ? 0 : order.status,
+    fromStatus: previousStatus,
     toStatus: 3,
     remark: body.cancelReason || '用户取消订单',
     createTime: new Date().toISOString().replace(/\.\d{3}Z$/, '+08:00'),
   })
 
-  const refundStatus = order.status === 0 ? 'NO_REFUND' : 'REFUND_PENDING'
+  const refundStatus = previousStatus === 0 ? 'NO_REFUND' : 'REFUND_PENDING'
 
   console.log(`[Mock] 订单已取消: orderId=${orderId}, refundStatus=${refundStatus}`)
 

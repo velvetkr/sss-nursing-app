@@ -13,6 +13,9 @@ export default defineConfig({
           $u-warning: #FF8A5C;
           $u-error: #FF5252;
           $u-info: #8E9DAE;
+          // 页面级设计 Token：确保每个 Vue SFC 的 SCSS 都能访问
+          $page-gradient: linear-gradient(180deg, #f8fbff 0%, #f6f8fc 42%, #f1f5fb 100%);
+          $surface-gradient: linear-gradient(145deg, rgba(255,255,255,0.86), rgba(247,250,255,0.68));
           @import "uview-plus/theme.scss";
         `,
       },

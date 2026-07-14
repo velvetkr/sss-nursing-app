@@ -20,12 +20,13 @@ defineProps({
 }
 
 .skeleton-card {
-  background: $glass-bg;
+  background: $glass-bg-strong;
   backdrop-filter: $glass-blur;
   -webkit-backdrop-filter: $glass-blur;
-  border-radius: $radius-md;
+  border-radius: 28rpx;
   padding: 28rpx;
-  margin-bottom: 16rpx;
+  margin-bottom: 18rpx;
+  border: $glass-border-soft;
 }
 
 .skeleton-line {

@@ -1,20 +1,21 @@
 <template>
-  <view class="detail-page" v-if="service">
+  <view v-if="service" class="detail-page">
     <!-- 背景弥散光 -->
     <view class="bg-glow bg-glow-top" />
 
-    <!-- 封面图 -->
-    <image
-      v-if="service.coverImage"
-      :src="service.coverImage"
-      class="detail-cover"
-      mode="aspectFill"
-    />
+    <view class="cover-stage">
+      <image v-if="service.coverImage" :src="service.coverImage" class="detail-cover" mode="aspectFill" />
+      <view v-else class="cover-placeholder"><u-icon name="heart-fill" size="58" color="#3A7BF7" /></view>
+      <view class="cover-label"><u-icon name="checkmark-circle-fill" size="14" color="#00B8A9" /> 专业护理服务</view>
+    </view>
 
     <!-- 服务名称 & 价格 -->
     <view class="detail-header">
-      <text class="detail-name">{{ service.name }}</text>
-      <text class="detail-category">{{ service.categoryName }}</text>
+      <view class="title-row">
+        <text class="detail-name">{{ service.name }}</text>
+        <view class="favorite-icon"><u-icon name="heart" size="20" color="#3A7BF7" /></view>
+      </view>
+      <text v-if="service.categoryName" class="detail-category">{{ service.categoryName }}</text>
       <view class="detail-price">
         <text class="price-num">¥{{ service.minPrice }}</text>
         <text class="price-unit">起</text>
@@ -22,7 +23,7 @@
     </view>
 
     <!-- 规格选择 -->
-    <view class="detail-section" v-if="service.specs?.length">
+    <view v-if="service.specs?.length" class="detail-section">
       <text class="section-title">服务规格</text>
       <view class="specs-list">
         <view
@@ -45,7 +46,7 @@
     </view>
 
     <!-- 服务介绍 -->
-    <view class="detail-section" v-if="service.description">
+    <view v-if="service.description" class="detail-section">
       <text class="section-title">服务介绍</text>
       <view class="description-content">
         <text class="desc-text">{{ service.description }}</text>
@@ -53,7 +54,7 @@
     </view>
 
     <!-- 图片展示 -->
-    <view class="detail-section" v-if="service.images?.length">
+    <view v-if="service.images?.length" class="detail-section">
       <text class="section-title">服务展示</text>
       <scroll-view scroll-x class="images-scroll" :show-scrollbar="false">
         <image
@@ -68,7 +69,7 @@
     </view>
 
     <!-- 用户评价 -->
-    <view class="detail-section" v-if="reviews.length">
+    <view v-if="reviews.length" class="detail-section">
       <text class="section-title">用户评价 ({{ reviewTotal }})</text>
       <view v-for="review in reviews" :key="review.reviewId" class="review-item">
         <view class="review-header">
@@ -84,14 +85,14 @@
 
     <!-- 底部预约栏 — 玻璃拟态 -->
     <view class="bottom-bar">
-      <view class="bottom-info" v-if="selectedSpec">
+      <view v-if="selectedSpec" class="bottom-info">
         <text class="bottom-spec">{{ selectedSpec.name }}</text>
         <text class="bottom-price">¥{{ selectedSpec.price }}</text>
       </view>
-      <view class="bottom-info" v-else>
+      <view v-else class="bottom-info">
         <text class="bottom-spec">请选择规格</text>
       </view>
-      <u-button type="primary" shape="round" size="large" @click="handleBook" class="book-btn">
+      <u-button type="primary" shape="round" size="large" class="book-btn" @click="handleBook">
         立即预约
       </u-button>
     </view>
@@ -157,7 +158,9 @@ function handleBook() {
     uni.showToast({ title: '请选择服务规格', icon: 'none' })
     return
   }
-  uni.showToast({ title: '预约功能将在下单模块中实现', icon: 'none' })
+  uni.navigateTo({
+    url: `/pages/booking/booking?itemId=${service.value.itemId}&specId=${selectedSpec.value.specId}`,
+  })
 }
 </script>
 
@@ -165,7 +168,7 @@ function handleBook() {
 .detail-page {
   min-height: 100vh;
   background-color: $bg-color-grey;
-  padding-bottom: 140rpx;
+  padding-bottom: 180rpx;
   position: relative;
   overflow: hidden;
 }
@@ -188,19 +191,32 @@ function handleBook() {
 }
 
 /* 封面 */
+.cover-stage { position: relative; }
 .detail-cover {
   width: 100%;
   height: 420rpx;
   background-color: $bg-color-grey;
 }
+.cover-placeholder { width: 100%; height: 420rpx; display: flex; align-items: center; justify-content: center; background: linear-gradient(145deg, #eaf2ff, #dff9fa); }
+.cover-label { position: absolute; left: 28rpx; bottom: 24rpx; display: flex; align-items: center; gap: 6rpx; padding: 9rpx 16rpx; border-radius: $radius-round; background: rgba(255,255,255,0.88); color: $success-color; font-size: $font-size-xs; }
 
 /* 头部信息 */
 .detail-header {
-  background-color: $bg-color;
-  padding: 28rpx $spacing-base;
+  margin: -24rpx $spacing-base 0;
+  position: relative;
+  z-index: 2;
+  padding: 28rpx 24rpx;
+  border: $glass-border-soft;
+  border-radius: 28rpx;
+  background: $glass-bg-strong;
+  box-shadow: $shadow-float;
+  backdrop-filter: $glass-blur;
 }
+.title-row { display: flex; align-items: flex-start; gap: 18rpx; }
+.favorite-icon { width: 66rpx; height: 66rpx; display: flex; align-items: center; justify-content: center; flex-shrink: 0; border-radius: 22rpx; background: $primary-bg; }
 
 .detail-name {
+  flex: 1;
   font-size: $font-size-xl;
   font-weight: 700;
   color: $text-color;
@@ -236,10 +252,12 @@ function handleBook() {
 
 /* 版块卡片 */
 .detail-section {
-  background: linear-gradient(180deg, rgba(255,255,255,0.65) 0%, rgba(248,251,255,0.58) 100%);
+  background: $surface-gradient;
   backdrop-filter: $glass-blur;
   -webkit-backdrop-filter: $glass-blur;
-  margin-top: 12rpx;
+  margin: 18rpx $spacing-base 0;
+  border: $glass-border-soft;
+  border-radius: 28rpx;
   padding: $spacing-lg $spacing-base;
   box-shadow: 0 2rpx 16rpx rgba(58, 123, 247, 0.04);
 }
@@ -412,13 +430,13 @@ function handleBook() {
   bottom: 0;
   left: 0;
   right: 0;
-  padding: 16rpx $spacing-base;
+  padding: 18rpx $spacing-base;
   padding-bottom: calc(16rpx + env(safe-area-inset-bottom));
-  background: $glass-bg;
+  background: rgba(249,251,255,0.88);
   backdrop-filter: $glass-blur;
   -webkit-backdrop-filter: $glass-blur;
   box-shadow: 0 -4rpx 24rpx rgba(0, 0, 0, 0.06);
-  border-top: $glass-border;
+  border-top: $glass-border-soft;
   display: flex;
   align-items: center;
   justify-content: space-between;

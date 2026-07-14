@@ -40,6 +40,8 @@ $bg-color-mask: rgba(20, 30, 45, 0.45);  // 蒙层（深海蓝调）
 $glass-bg: rgba(255, 255, 255, 0.55);
 $glass-blur: blur(20px);
 $glass-border: 1px solid rgba(255, 255, 255, 0.6);
+$glass-bg-strong: rgba(255, 255, 255, 0.78);
+$glass-border-soft: 1px solid rgba(255, 255, 255, 0.82);
 
 /* ========================================
  * 边框 & 分割线
@@ -85,12 +87,13 @@ $shadow-base: 0 4rpx 20rpx rgba(58, 123, 247, 0.08);
 $shadow-lg: 0 8rpx 36rpx rgba(58, 123, 247, 0.12);
 $shadow-card: 0 4rpx 24rpx rgba(0, 0, 0, 0.04);
 $shadow-glow: 0 0 24rpx rgba(58, 123, 247, 0.15);  // 主色呼吸光晕
+$shadow-float: 0 14rpx 42rpx rgba(42, 91, 170, 0.12);
 
 /* ========================================
  * 组件尺寸
  * ======================================== */
 $navbar-height: 88rpx;            // 导航栏高度
-$tabbar-height: 100rpx;           // 底部 TabBar 高度
+$tabbar-height: 112rpx;           // 底部 TabBar 高度
 $button-height: 88rpx;            // 按钮高度
 $input-height: 88rpx;             // 输入框高度
 $card-padding: 24rpx;             // 卡片内边距
@@ -104,3 +107,9 @@ $transition-fast: 0.15s cubic-bezier(0.4, 0, 0.2, 1);
 $transition-base: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 $transition-slow: 0.5s cubic-bezier(0.4, 0, 0.2, 1);
 $transition-spring: 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);  // 弹性回弹
+
+/* ========================================
+ * 页面通用装饰
+ * ======================================== */
+$page-gradient: linear-gradient(180deg, #f8fbff 0%, #f6f8fc 42%, #f1f5fb 100%);
+$surface-gradient: linear-gradient(145deg, rgba(255,255,255,0.86), rgba(247,250,255,0.68));

@@ -30,5 +30,21 @@ page {
   -webkit-font-smoothing: antialiased;
 }
 
+view,
+text,
+button,
+input {
+  box-sizing: border-box;
+}
+
+button,
+.u-button {
+  transition: transform $transition-fast, box-shadow $transition-fast;
+
+  &:active {
+    transform: scale(0.97);
+  }
+}
+
 /* uView Plus 全局样式覆盖（按需） */
 </style>
