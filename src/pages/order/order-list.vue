@@ -12,6 +12,7 @@
           <button v-if="order.status === 0" class="action-btn primary" @click="pay(order)">立即支付</button>
           <button v-if="order.status === 0 || order.status === 1" class="action-btn" @click="cancel(order.orderId)">取消订单</button>
           <button v-if="order.status === 2" class="action-btn primary" @click="review(order.orderId)">评价服务</button>
+          <button v-if="order.status === 1" class="action-btn primary" @click="complete(order.orderId)">确认完成</button>
           <button class="action-btn" @click="goDetail(order.orderId)">查看详情</button>
         </view>
       </view>
@@ -33,8 +34,9 @@ onShow(() => loadOrders())
 function loadOrders() { orderStore.fetchOrders(activeStatus.value === null ? {} : { status: activeStatus.value }) }
 function changeStatus(status) { activeStatus.value = status; loadOrders() }
 function goDetail(id) { uni.navigateTo({ url: `/pages/order/order-detail?id=${id}` }) }
-async function pay(order) { await orderStore.payOrder(order.orderId); uni.navigateTo({ url: `/pages/payment-result/payment-result?status=success&orderId=${order.orderId}&amount=${order.totalAmount}` }) }
+async function pay(order) { try { const payment = await orderStore.executePayment(order.orderId); const status = payment.success ? 'success' : 'failed'; uni.navigateTo({ url: `/pages/payment-result/payment-result?status=${status}&orderId=${order.orderId}&amount=${order.totalAmount}` }) } catch { uni.navigateTo({ url: `/pages/payment-result/payment-result?status=failed&orderId=${order.orderId}&amount=${order.totalAmount}` }) } }
 function review(id) { uni.navigateTo({ url: `/pages/review/review-submit?orderId=${id}` }) }
+async function complete(id) { await orderStore.completeOrder(id); loadOrders() }
 function cancel(id) { uni.showModal({ title: '取消订单', content: '确定取消本次护理服务吗？', success: async ({ confirm }) => { if (confirm) { await orderStore.cancelOrder(id, '用户主动取消'); loadOrders() } } }) }
 </script>
 

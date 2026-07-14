@@ -30,6 +30,7 @@ const testUser = {
   status: 0,
   lastLoginTime: '2026-07-01T10:00:00+08:00',
   createTime: '2026-01-15T08:00:00+08:00',
+  version: 0,
 }
 users.set('13800138000', testUser)
 
@@ -51,6 +52,7 @@ function buildUserResponse(user) {
     avatar: user.avatar || null,
     gender: user.gender,
     status: user.status,
+    version: user.version || 0,
   }
 }
 
@@ -63,11 +65,15 @@ function expireTime() {
 
 // ========== 1. 发送短信验证码 ==========
 Mock.mock(/\/api\/v1\/users\/sms-code/, 'post', (options) => {
+  const idempotencyKey = options.headers?.['Idempotency-Key'] || options.headers?.['idempotency-key']
   const { phone, smsType } = JSON.parse(options.body)
   console.log(`[Mock] 发送验证码 → ${phone}，类型: ${smsType}，验证码: 123456`)
 
   if (!/^1\d{10}$/.test(phone)) {
     return { code: 1000, message: '手机号格式不正确', data: null }
+  }
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(idempotencyKey || '')) {
+    return { code: 1000, message: 'Idempotency-Key 必须为 UUID', data: null }
   }
 
   // 注册时检查手机号已存在
@@ -81,8 +87,13 @@ Mock.mock(/\/api\/v1\/users\/sms-code/, 'post', (options) => {
 
   return {
     code: 0,
-    message: '验证码已发送',
-    data: { expireSeconds: 300 },
+    message: '验证码发送任务已受理',
+    data: {
+      expireSeconds: 300,
+      retryAfterSeconds: null,
+      requestId: String(Date.now()),
+      status: 'PENDING',
+    },
   }
 })
 
@@ -116,6 +127,7 @@ Mock.mock(/\/api\/v1\/users\/register/, 'post', (options) => {
     status: 0,
     lastLoginTime: new Date().toISOString().replace(/\.\d{3}Z$/, '+08:00'),
     createTime: new Date().toISOString().replace(/\.\d{3}Z$/, '+08:00'),
+    version: 0,
   }
   users.set(phone, user)
 
@@ -258,12 +270,13 @@ Mock.mock(/\/api\/v1\/users\/profile/, 'get', (options) => {
       status: user.status,
       lastLoginTime: user.lastLoginTime,
       createTime: user.createTime,
+      version: user.version || 0,
     },
   }
 })
 
 // ========== 7. 修改个人信息 ==========
-Mock.mock(/\/api\/v1\/users\/profile/, 'put', (options) => {
+Mock.mock(/\/api\/v1\/users\/profile/, 'patch', (options) => {
   const auth = options.headers?.Authorization || ''
   const token = auth.replace('Bearer ', '')
 
@@ -282,6 +295,13 @@ Mock.mock(/\/api\/v1\/users\/profile/, 'put', (options) => {
   }
   if (!user) user = testUser
 
+  if (body.version === undefined || body.version === null) {
+    return { code: 1000, message: 'version 为必填字段', data: null }
+  }
+  if (body.version !== (user.version || 0)) {
+    return { code: 2016, message: '资料版本冲突，请刷新后重试', data: null }
+  }
+
   // 更新字段
   if (body.nickname !== undefined) {
     if (body.nickname.length < 2 || body.nickname.length > 16) {
@@ -297,6 +317,7 @@ Mock.mock(/\/api\/v1\/users\/profile/, 'put', (options) => {
     }
     user.idCard = body.idCard
   }
+  user.version = (user.version || 0) + 1
 
   console.log(`[Mock] 个人信息已更新: userId=${userId}`)
 
@@ -308,6 +329,7 @@ Mock.mock(/\/api\/v1\/users\/profile/, 'put', (options) => {
       nickname: user.nickname,
       avatar: user.avatar,
       gender: user.gender,
+      version: user.version,
     },
   }
 })

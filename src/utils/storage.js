@@ -1,8 +1,6 @@
 /**
  * 本地存储工具 — Token 持久化与用户数据管理
  */
-import { ref } from 'vue'
-
 const KEYS = {
   TOKEN: 'token',
   REFRESH_TOKEN: 'refreshToken',
@@ -36,15 +34,6 @@ function remove(key) {
     uni.removeStorageSync(key)
   } catch (e) {
     console.error(`[Storage] 删除失败: ${key}`, e)
-  }
-}
-
-/** 清空所有存储 */
-function clear() {
-  try {
-    uni.clearStorageSync()
-  } catch (e) {
-    console.error('[Storage] 清空失败', e)
   }
 }
 

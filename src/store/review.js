@@ -7,7 +7,7 @@
  */
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import http from '@/utils/request.js'
+import http, { createIdempotentKey } from '@/utils/request.js'
 
 export const useReviewStore = defineStore('review', () => {
   // ===== 状态 =====
@@ -22,7 +22,9 @@ export const useReviewStore = defineStore('review', () => {
    * @param {Object} params - { orderId, rating, content, images }
    */
   async function submitReview(params) {
-    const res = await http.post('/api/v1/reviews', params)
+    const res = await http.post('/api/v1/reviews', params, {
+      idempotentKey: createIdempotentKey('review'),
+    })
     return res.data // { reviewId }
   }
 

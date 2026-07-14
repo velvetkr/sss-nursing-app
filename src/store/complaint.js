@@ -8,7 +8,7 @@
  */
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import http from '@/utils/request.js'
+import http, { createIdempotentKey } from '@/utils/request.js'
 
 export const useComplaintStore = defineStore('complaint', () => {
   // ===== 状态 =====
@@ -39,7 +39,9 @@ export const useComplaintStore = defineStore('complaint', () => {
    * @param {Object} params - { orderId, type, content, images }
    */
   async function submitComplaint(params) {
-    const res = await http.post('/api/v1/complaints', params)
+    const res = await http.post('/api/v1/complaints', params, {
+      idempotentKey: createIdempotentKey('complaint'),
+    })
     return res.data // { complaintId }
   }
 
@@ -53,7 +55,10 @@ export const useComplaintStore = defineStore('complaint', () => {
       const query = { page: params.page || 1, size: params.size || 20 }
       const res = await http.get('/api/v1/complaints', query)
       const data = res.data
-      complaints.value = data.list || []
+      complaints.value = (data.list || []).map((item) => ({
+        ...item,
+        statusText: getStatusText(item.status),
+      }))
       total.value = data.total || 0
       return { list: complaints.value, total: total.value }
     } finally {
@@ -69,7 +74,10 @@ export const useComplaintStore = defineStore('complaint', () => {
     loading.value = true
     try {
       const res = await http.get(`/api/v1/complaints/${complaintId}/tracks`)
-      currentTracks.value = res.data
+      currentTracks.value = {
+        ...res.data,
+        statusText: getStatusText(res.data.status),
+      }
       return currentTracks.value
     } finally {
       loading.value = false

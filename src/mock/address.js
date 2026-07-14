@@ -10,8 +10,6 @@
  */
 import Mock from 'mockjs'
 
-const Random = Mock.Random
-
 // ========== 模拟地址数据 ==========
 const addresses = [
   {
@@ -114,7 +112,7 @@ Mock.mock(/\/api\/v1\/addresses$/, 'post', (options) => {
 })
 
 // 3. 编辑地址
-Mock.mock(/\/api\/v1\/addresses\/\d+$/, 'put', (options) => {
+Mock.mock(/\/api\/v1\/addresses\/\d+$/, 'patch', (options) => {
   const idMatch = options.url.match(/\/api\/v1\/addresses\/(\d+)/)
   const addressId = idMatch ? parseInt(idMatch[1]) : null
   const body = JSON.parse(options.body)

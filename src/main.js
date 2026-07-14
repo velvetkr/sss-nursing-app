@@ -5,8 +5,8 @@ import uviewPlus from 'uview-plus'
 import App from './App.vue'
 import './uni.scss'
 
-// 初始化 Mock（仅开发环境）
-if (import.meta.env.DEV) {
+// 默认保留 Mock 演示；联调真实后端时设置 VITE_USE_MOCK=false。
+if (import.meta.env.DEV && import.meta.env.VITE_USE_MOCK !== 'false') {
   import('./mock/index.js')
 }
 

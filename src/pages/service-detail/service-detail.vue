@@ -109,9 +109,11 @@
 import { ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { useServiceStore } from '@/store/service.js'
+import { useUserStore } from '@/store/user.js'
 import http from '@/utils/request.js'
 
 const serviceStore = useServiceStore()
+const userStore = useUserStore()
 const service = ref(null)
 const selectedSpec = ref(null)
 const reviews = ref([])
@@ -125,7 +127,7 @@ onLoad(async (options) => {
       if (service.value?.specs?.length) {
         selectedSpec.value = service.value.specs[0]
       }
-      loadReviews(id)
+      if (userStore.isLoggedIn) loadReviews(id)
     } catch {
       uni.showToast({ title: '服务不存在', icon: 'none' })
     }
@@ -154,6 +156,10 @@ function previewImage(index) {
 }
 
 function handleBook() {
+  if (!userStore.isLoggedIn) {
+    uni.navigateTo({ url: '/pages/login/login' })
+    return
+  }
   if (!selectedSpec.value) {
     uni.showToast({ title: '请选择服务规格', icon: 'none' })
     return

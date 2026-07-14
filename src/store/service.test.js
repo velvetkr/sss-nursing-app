@@ -13,6 +13,7 @@ vi.mock('@/utils/request.js', () => ({
     get: vi.fn(),
     post: vi.fn(),
   },
+  resolveAssetUrl: vi.fn((url) => url || ''),
 }))
 
 import http from '@/utils/request.js'
@@ -25,19 +26,21 @@ function mockCategories() {
   ]
 }
 
-function mockServiceList(page = 1, size = 20, total = 50) {
+function mockServiceList(offset = 0, size = 20, total = 50) {
   const list = []
-  for (let i = 0; i < Math.min(size, total - (page - 1) * size); i++) {
+  for (let i = 0; i < Math.min(size, total - offset); i++) {
     list.push({
-      itemId: (page - 1) * size + i + 1,
-      name: `服务项目 ${(page - 1) * size + i + 1}`,
+      id: offset + i + 1,
+      name: `服务项目 ${offset + i + 1}`,
       minPrice: 100 + i * 10,
       coverImage: `/static/img${i}.jpg`,
       categoryId: 1,
       categoryName: '康复护理',
     })
   }
-  return { list, total, page, size }
+  const nextOffset = offset + list.length
+  const hasNext = nextOffset < total
+  return { list, size, hasNext, nextCursor: hasNext ? `cursor_${nextOffset}` : null }
 }
 
 describe('serviceStore — 分类', () => {
@@ -62,27 +65,27 @@ describe('serviceStore — 服务列表分页', () => {
   })
 
   it('fetchServices 初始加载第 1 页', async () => {
-    const mockData = mockServiceList(1, 20, 50)
+    const mockData = mockServiceList(0, 20, 50)
     http.get.mockResolvedValueOnce({ code: 0, data: mockData })
 
     const store = useServiceStore()
     const result = await store.fetchServices()
 
     expect(result.list).toHaveLength(20)
-    expect(result.total).toBe(50)
-    expect(store.total).toBe(50)
+    expect(result.total).toBe(20)
+    expect(store.total).toBe(20)
     expect(store.currentPage).toBe(1)
     expect(store.hasMore).toBe(true)
   })
 
   it('loadMore 追加第 2 页数据', async () => {
     // 先加载第 1 页
-    http.get.mockResolvedValueOnce({ code: 0, data: mockServiceList(1, 20, 50) })
+    http.get.mockResolvedValueOnce({ code: 0, data: mockServiceList(0, 20, 50) })
     const store = useServiceStore()
     await store.fetchServices()
 
     // 加载更多
-    http.get.mockResolvedValueOnce({ code: 0, data: mockServiceList(2, 20, 50) })
+    http.get.mockResolvedValueOnce({ code: 0, data: mockServiceList(20, 20, 50) })
     const result = await store.loadMore()
 
     expect(result.list).toHaveLength(40) // 20 + 20
@@ -92,7 +95,7 @@ describe('serviceStore — 服务列表分页', () => {
   })
 
   it('数据全部加载完后 hasMore 为 false', async () => {
-    http.get.mockResolvedValueOnce({ code: 0, data: mockServiceList(1, 10, 10) })
+    http.get.mockResolvedValueOnce({ code: 0, data: mockServiceList(0, 10, 10) })
     const store = useServiceStore()
     await store.fetchServices({ page: 1, size: 10 })
 
@@ -100,7 +103,7 @@ describe('serviceStore — 服务列表分页', () => {
   })
 
   it('loadMore 在无更多数据时直接返回空列表', async () => {
-    http.get.mockResolvedValueOnce({ code: 0, data: mockServiceList(1, 5, 5) })
+    http.get.mockResolvedValueOnce({ code: 0, data: mockServiceList(0, 5, 5) })
     const store = useServiceStore()
     await store.fetchServices({ page: 1, size: 5 })
 
@@ -122,9 +125,9 @@ describe('serviceStore — 搜索', () => {
       list: [
         { itemId: 10, name: '肩颈推拿', minPrice: 168, coverImage: '/img.jpg', categoryName: '中医理疗' },
       ],
-      total: 1,
-      page: 1,
       size: 20,
+      hasNext: false,
+      nextCursor: null,
     }
     http.get.mockResolvedValueOnce({ code: 0, data: searchResult })
 
@@ -174,7 +177,7 @@ describe('serviceStore — loading 状态', () => {
   })
 
   it('fetchServices 开始时 loading=true，结束后 loading=false', async () => {
-    http.get.mockResolvedValueOnce({ code: 0, data: mockServiceList(1, 20, 50) })
+    http.get.mockResolvedValueOnce({ code: 0, data: mockServiceList(0, 20, 50) })
     const store = useServiceStore()
 
     const promise = store.fetchServices()

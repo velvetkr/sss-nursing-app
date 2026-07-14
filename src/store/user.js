@@ -18,7 +18,7 @@ import {
   removeUserInfo,
   isLoggedIn as checkLogin,
 } from '@/utils/storage.js'
-import http from '@/utils/request.js'
+import http, { createIdempotentKey } from '@/utils/request.js'
 
 export const useUserStore = defineStore(
   'user',
@@ -51,6 +51,8 @@ export const useUserStore = defineStore(
       const res = await http.post('/api/v1/users/sms-code', {
         phone: phoneNumber,
         smsType,
+      }, {
+        idempotencyKey: createIdempotentKey(),
       })
       return res
     }
@@ -116,7 +118,10 @@ export const useUserStore = defineStore(
 
     /** 修改个人信息 */
     async function updateProfile(data) {
-      const res = await http.put('/api/v1/users/profile', data)
+      const res = await http.patch('/api/v1/users/profile', {
+        ...data,
+        version: data.version ?? userInfo.value?.version ?? 0,
+      })
       // 合并更新本地
       userInfo.value = { ...userInfo.value, ...res.data }
       setUserInfo(userInfo.value)
@@ -125,7 +130,17 @@ export const useUserStore = defineStore(
 
     /** 上传文件（头像/评价图片/投诉截图） */
     async function uploadFile(filePath, bizType) {
-      const res = await http.upload('/api/v1/files/upload', filePath, { bizType })
+      const bizTypeMap = {
+        review: 'review_image',
+        complaint: 'complaint_image',
+      }
+      const normalizedBizType = bizTypeMap[bizType] || bizType
+      const res = await http.upload(
+        '/api/v1/files/upload',
+        filePath,
+        { bizType: normalizedBizType },
+        { idempotentKey: createIdempotentKey('file') }
+      )
       return res.data
     }
 

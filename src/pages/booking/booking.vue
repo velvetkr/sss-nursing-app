@@ -110,8 +110,13 @@ async function submitOrder() {
       serviceTimeSlot: serviceTimeSlot.value,
       remark: remark.value.trim(),
     })
-    await orderStore.payOrder(order.orderId)
-    uni.redirectTo({ url: `/pages/payment-result/payment-result?status=success&orderId=${order.orderId}&amount=${selectedSpec.value.price}` })
+    try {
+      const payment = await orderStore.executePayment(order.orderId)
+      const status = payment.success ? 'success' : 'failed'
+      uni.redirectTo({ url: `/pages/payment-result/payment-result?status=${status}&orderId=${order.orderId}&amount=${selectedSpec.value.price}` })
+    } catch {
+      uni.redirectTo({ url: `/pages/payment-result/payment-result?status=failed&orderId=${order.orderId}&amount=${selectedSpec.value.price}` })
+    }
   } catch {
     uni.showToast({ title: '订单提交失败，请重试', icon: 'none' })
   } finally {

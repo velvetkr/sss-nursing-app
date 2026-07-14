@@ -6,8 +6,12 @@
  * - 列表、详情、取消
  */
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
-import http, { setIdempotentKey, clearIdempotentKey } from '@/utils/request.js'
+import { ref } from 'vue'
+import http, {
+  setIdempotentKey,
+  clearIdempotentKey,
+  createIdempotentKey,
+} from '@/utils/request.js'
 
 export const useOrderStore = defineStore('order', () => {
   // ===== 状态 =====
@@ -16,6 +20,7 @@ export const useOrderStore = defineStore('order', () => {
   const currentOrder = ref(null)
   const prepayToken = ref('')
   const loading = ref(false)
+  const paymentKeys = new Map()
 
   // ===== 状态映射 =====
   const STATUS_MAP = {
@@ -62,9 +67,44 @@ export const useOrderStore = defineStore('order', () => {
    * 第三步：发起支付
    */
   async function payOrder(orderId) {
+    if (!paymentKeys.has(orderId)) {
+      paymentKeys.set(orderId, createIdempotentKey('pay'))
+    }
     const res = await http.post(`/api/v1/orders/${orderId}/pay`, {
       payChannel: 'alipay',
+    }, {
+      idempotentKey: paymentKeys.get(orderId),
     })
+    return res.data
+  }
+
+  /** 发起支付并在非 Mock 环境调起支付宝。 */
+  async function executePayment(orderId) {
+    const payment = await payOrder(orderId)
+    if (payment.mock || payment.payStatus === 'SUCCESS') {
+      return { ...payment, success: true }
+    }
+    if (payment.payStatus !== 'READY' || !payment.payParams) {
+      return { ...payment, success: false }
+    }
+
+    await new Promise((resolve, reject) => {
+      uni.requestPayment({
+        provider: 'alipay',
+        orderInfo: payment.payParams,
+        success: resolve,
+        fail: reject,
+      })
+    })
+    return { ...payment, success: true }
+  }
+
+  /** 用户确认服务完成 */
+  async function completeOrder(orderId) {
+    const res = await http.post(`/api/v1/orders/${orderId}/complete`)
+    if (currentOrder.value?.orderId === orderId) {
+      await fetchOrderDetail(orderId)
+    }
     return res.data
   }
 
@@ -131,6 +171,8 @@ export const useOrderStore = defineStore('order', () => {
     getPrepayToken,
     createOrder,
     payOrder,
+    executePayment,
+    completeOrder,
     fetchOrders,
     fetchOrderDetail,
     cancelOrder,

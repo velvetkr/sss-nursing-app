@@ -32,7 +32,7 @@ const addressStore = useAddressStore()
 const addressId = ref(null)
 const submitting = ref(false)
 const regionVisible = ref(false)
-const tags = ['家', '父母家', '公司', '其他']
+const tags = ['家', '公司', '学校', '其他']
 const regionColumns = [[
   { label: '北京市 / 北京市 / 朝阳区', value: ['北京市', '北京市', '朝阳区'] },
   { label: '北京市 / 北京市 / 海淀区', value: ['北京市', '北京市', '海淀区'] },
@@ -59,14 +59,24 @@ function confirmRegion({ value }) {
 }
 
 async function submit() {
-  if (!form.receiverName || form.receiverPhone.length !== 11 || !form.province || !form.detailAddress) {
+  if (form.receiverName.trim().length < 2 || form.receiverPhone.length !== 11 || !form.province || form.detailAddress.trim().length < 5) {
     uni.showToast({ title: '请完整填写地址信息', icon: 'none' })
     return
   }
   submitting.value = true
   try {
-    if (addressId.value) await addressStore.updateAddress(addressId.value, { ...form })
-    else await addressStore.addAddress({ ...form })
+    const payload = {
+      receiverName: form.receiverName.trim(),
+      receiverPhone: form.receiverPhone,
+      tag: form.tag,
+      province: form.province,
+      city: form.city,
+      district: form.district,
+      detailAddress: form.detailAddress.trim(),
+      isDefault: form.isDefault,
+    }
+    if (addressId.value) await addressStore.updateAddress(addressId.value, payload)
+    else await addressStore.addAddress(payload)
     uni.showToast({ title: '地址已保存', icon: 'success' })
     setTimeout(() => uni.navigateBack(), 600)
   } finally {

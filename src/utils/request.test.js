@@ -10,6 +10,8 @@ import http, {
   clearIdempotentKey,
   request,
   BASE_URL,
+  createIdempotentKey,
+  resolveAssetUrl,
 } from '@/utils/request.js'
 
 describe('request — 错误码映射', () => {
@@ -29,6 +31,14 @@ describe('request — 错误码映射', () => {
     expect(typeof http.upload).toBe('function')
   })
 
+  it('生成 UUID 格式幂等键', () => {
+    expect(createIdempotentKey()).toMatch(/^[0-9a-f-]{36}$/i)
+  })
+
+  it('相对资源路径自动拼接网关地址', () => {
+    expect(resolveAssetUrl('/uploads/a.png')).toBe('http://localhost:8080/uploads/a.png')
+  })
+
   it('http.get 调用 uni.request 并返回 Promise', async () => {
     uni.request.mockImplementationOnce((opts) => {
       opts.success({ statusCode: 200, data: { code: 0, message: 'success', data: { ok: true } } })
@@ -46,12 +56,12 @@ describe('request — 错误码映射', () => {
     await http.post('/api/v1/users/login', { phone: '13800138000', loginMode: 'password', password: '123456' })
   })
 
-  it('http.get 将 data 作为 query 参数', async () => {
+  it('http.get 将游标参数作为 query data 传入', async () => {
     uni.request.mockImplementationOnce((opts) => {
-      expect(opts.data).toEqual({ page: 1, size: 20 })
+      expect(opts.data).toEqual({ cursor: 'cursor_20', size: 20 })
       opts.success({ statusCode: 200, data: { code: 0, message: 'ok', data: { list: [], total: 0 } } })
     })
-    await http.get('/api/v1/items', { page: 1, size: 20 })
+    await http.get('/api/v1/items', { cursor: 'cursor_20', size: 20 })
   })
 
   it('业务错误码（非 auth）时 reject', async () => {
@@ -104,5 +114,15 @@ describe('request — 幂等键管理', () => {
     })
     // 通过 request 直接调用以传入 idempotent 选项
     await request({ url: '/api/v1/orders', method: 'POST', data: {}, idempotent: 'inline-key' })
+  })
+
+  it('短信接口支持 Idempotency-Key 请求头', async () => {
+    uni.request.mockImplementationOnce((opts) => {
+      expect(opts.header['Idempotency-Key']).toBe('00000000-0000-4000-8000-000000000001')
+      opts.success({ statusCode: 200, data: { code: 0, message: 'ok', data: null } })
+    })
+    await http.post('/api/v1/users/sms-code', {}, {
+      idempotencyKey: '00000000-0000-4000-8000-000000000001',
+    })
   })
 })

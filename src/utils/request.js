@@ -9,10 +9,13 @@
  * - 支持 PATCH / DELETE 方法
  */
 import { getToken, removeToken } from './storage.js'
+import devConfig from '../../config/dev.js'
+import prodConfig from '../../config/prod.js'
 
 // ========== 环境配置 ==========
 // DEV 环境指向 Gateway，PROD 由 CI/CD 写入
-const BASE_URL = 'http://localhost:8080'
+const runtimeConfig = import.meta.env.DEV ? devConfig : prodConfig
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || runtimeConfig.BASE_URL
 const TIMEOUT = 15000
 
 // ========== 全局错误码映射（按区间） ==========
@@ -27,6 +30,7 @@ const ERROR_MESSAGES = {
   1006: '操作冲突，请勿重复提交',
   1007: '暂不满足操作条件',
   1008: '操作过于频繁，请稍后重试',
+  1009: '依赖服务暂不可用，请稍后重试',
   // 用户 2000-2999
   2001: '验证码发送过于频繁，请60秒后重试',
   2002: '今日验证码发送次数已达上限',
@@ -39,6 +43,13 @@ const ERROR_MESSAGES = {
   2010: '密码错误',
   2011: '账号已被禁用',
   2012: '新密码不能与旧密码相同',
+  2013: '身份证号格式不正确',
+  2014: '文件大小超过限制',
+  2015: '文件为空或保存失败',
+  2016: '资料已被更新，请刷新后重试',
+  2017: '上传请求冲突，请重新选择文件',
+  2018: '文件上传处理中，请稍后重试',
+  2019: '短信请求幂等键冲突',
   // 订单 3000-3999
   3001: '下单令牌已过期，请重新提交',
   3002: '该时段已被预约',
@@ -49,9 +60,13 @@ const ERROR_MESSAGES = {
   3007: '订单不存在',
   3008: '无权查看该订单',
   3009: '当前状态不可取消',
+  3010: '当前状态不可支付',
+  3013: '地址不存在或无权操作',
   // 评价投诉 4000-4999
   4002: '该订单暂不可评价',
   4003: '该订单已评价',
+  4006: '投诉记录不存在',
+  4007: '无权查看该投诉',
 }
 
 /** 根据错误码获取友好提示 */
@@ -102,9 +117,12 @@ function request(options = {}) {
       header['Authorization'] = `Bearer ${token}`
     }
     // 幂等键：优先使用 options 传入的，其次全局的
-    const idempotentKey = options.idempotent || _idempotentKey
+    const idempotentKey = options.idempotentKey || options.idempotent || _idempotentKey
     if (idempotentKey) {
       header['Idempotent-Key'] = idempotentKey
+    }
+    if (options.idempotencyKey) {
+      header['Idempotency-Key'] = options.idempotencyKey
     }
 
     uni.request({
@@ -134,22 +152,16 @@ function request(options = {}) {
             uni.showToast({ title: msg, icon: 'none' })
             reject(data)
           }
-        } else if (statusCode === 401) {
+        } else if (isAuthError(data?.code, statusCode)) {
           removeToken()
-          uni.showToast({ title: '登录已过期，请重新登录', icon: 'none' })
+          uni.showToast({ title: getErrorMessage(data?.code, '登录已过期，请重新登录'), icon: 'none' })
           setTimeout(() => {
             uni.reLaunch({ url: '/pages/login/login' })
           }, 1500)
-          reject(res)
-        } else if (statusCode === 403) {
-          uni.showToast({ title: '暂无权限', icon: 'none' })
-          reject(res)
-        } else if (statusCode === 404) {
-          uni.showToast({ title: '请求的资源不存在', icon: 'none' })
-          reject(res)
-        } else if (statusCode === 429) {
-          uni.showToast({ title: '操作过于频繁，请稍后重试', icon: 'none' })
-          reject(res)
+          reject(data || res)
+        } else if (data?.code) {
+          uni.showToast({ title: getErrorMessage(data.code, data.message), icon: 'none' })
+          reject(data)
         } else if (statusCode >= 500) {
           uni.showToast({ title: '服务器繁忙，请稍后重试', icon: 'none' })
           reject(res)
@@ -193,13 +205,18 @@ const http = {
   /** 上传文件（multipart/form-data） */
   upload(url, filePath, formData = {}, options = {}) {
     const token = getToken()
+    const idempotentKey = options.idempotentKey || createIdempotentKey('upload')
     return new Promise((resolve, reject) => {
       uni.uploadFile({
         url: BASE_URL + url,
         filePath,
         name: 'file',
         formData,
-        header: token ? { Authorization: `Bearer ${token}` } : {},
+        header: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          'Idempotent-Key': idempotentKey,
+          ...options.header,
+        },
         timeout: options.timeout || 30000,
         success: (res) => {
           try {
@@ -218,6 +235,23 @@ const http = {
       })
     })
   },
+}
+
+/** 生成客户端幂等键；短信接口要求 UUID，其他接口也可复用。 */
+export function createIdempotentKey(prefix = '') {
+  const uuid = globalThis.crypto?.randomUUID?.() ||
+    'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (char) => {
+      const random = Math.floor(Math.random() * 16)
+      const value = char === 'x' ? random : (random & 0x3) | 0x8
+      return value.toString(16)
+    })
+  return prefix ? `${prefix}-${uuid}`.slice(0, 64) : uuid
+}
+
+/** 将后端返回的网关相对资源路径转换为可直接访问的 URL。 */
+export function resolveAssetUrl(url) {
+  if (!url || /^(https?:|data:|blob:)/i.test(url)) return url || ''
+  return `${BASE_URL}${url.startsWith('/') ? '' : '/'}${url}`
 }
 
 export default http

@@ -24,7 +24,7 @@
       <view v-if="searching" class="searching"><u-loading-icon size="26" color="#3A7BF7" /><text>正在为您查找...</text></view>
       <empty-state v-else-if="results.length === 0" title="没有找到相关服务" description="换个关键词试试，我们会继续为您寻找" />
       <view v-else>
-        <view class="result-heading"><text class="section-title">搜索结果</text><text class="result-count">{{ total }} 项服务</text></view>
+        <view class="result-heading"><text class="section-title">搜索结果</text><text class="result-count">已找到 {{ total }} 项</text></view>
         <service-card v-for="item in results" :key="item.itemId" :data="item" @click="goDetail(item.itemId)" />
       </view>
     </view>

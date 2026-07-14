@@ -16,16 +16,6 @@ import { getMockServiceItem, getMockServiceSpec } from './service.js'
 
 const Random = Mock.Random
 
-// ========== 订单状态 ==========
-const STATUS = {
-  0: '待支付',
-  1: '待服务',
-  2: '已完成',
-  3: '已取消',
-  4: '退款中',
-  5: '已退款',
-}
-
 // ========== 模拟数据 ==========
 const orders = []
 const prepayTokens = new Map() // prepayToken → { expireTime }
@@ -65,6 +55,10 @@ const presetOrders = [
   },
 ]
 presetOrders.forEach((o) => orders.push(o))
+
+export function getMockOrder(orderId) {
+  return orders.find((order) => order.orderId === Number(orderId)) || null
+}
 
 // ========== 接口 Mock ==========
 
@@ -216,7 +210,8 @@ Mock.mock(/\/api\/v1\/orders\/\d+$/, 'get', (options) => {
   }
 
   // 返回快照版本（不含 _idempotentKey）
-  const { _idempotentKey, ...detail } = order
+  const detail = { ...order }
+  delete detail._idempotentKey
   return { code: 0, message: 'success', data: detail }
 })
 
@@ -237,35 +232,39 @@ Mock.mock(/\/api\/v1\/orders\/\d+\/cancel/, 'post', (options) => {
 
   const body = options.body ? JSON.parse(options.body) : {}
   const previousStatus = order.status
-  order.status = 3 // 已取消
+  order.status = previousStatus === 0 ? 3 : 4
   order.cancelReason = body.cancelReason || ''
   order.operationLogs.push({
     action: 'cancel',
     fromStatus: previousStatus,
-    toStatus: 3,
+    toStatus: order.status,
     remark: body.cancelReason || '用户取消订单',
     createTime: new Date().toISOString().replace(/\.\d{3}Z$/, '+08:00'),
   })
 
-  const refundStatus = previousStatus === 0 ? 'NO_REFUND' : 'REFUND_PENDING'
+  const refundStatus = previousStatus === 0 ? 'NO_REFUND' : 'REFUNDING'
 
   console.log(`[Mock] 订单已取消: orderId=${orderId}, refundStatus=${refundStatus}`)
 
   return {
     code: 0,
     message: '订单已取消',
-    data: { orderId: order.orderId, status: 3, refundStatus },
+    data: { orderId: order.orderId, status: order.status, refundStatus },
   }
 })
 
 // 6. 发起支付（返回模拟支付宝支付参数）
 Mock.mock(/\/api\/v1\/orders\/\d+\/pay/, 'post', (options) => {
+  const idempotentKey = (options.headers || {})['Idempotent-Key'] || ''
   const idMatch = options.url.match(/\/api\/v1\/orders\/(\d+)\/pay/)
   const orderId = idMatch ? parseInt(idMatch[1]) : null
   const order = orders.find((o) => o.orderId === orderId)
 
   if (!order) {
     return { code: 3007, message: '订单不存在', data: null }
+  }
+  if (!idempotentKey) {
+    return { code: 1000, message: '支付缺少 Idempotent-Key', data: null }
   }
 
   if (order.status !== 0) {
@@ -291,10 +290,32 @@ Mock.mock(/\/api\/v1\/orders\/\d+\/pay/, 'post', (options) => {
       orderId,
       orderNo: order.orderNo,
       payAmount: order.totalAmount,
-      payStatus: 1,
+      payStatus: 'SUCCESS',
+      payChannel: 'alipay',
+      mock: true,
+      payParams: null,
       tradeNo: 'mock_trade_' + Random.string('number', 16),
     },
   }
+})
+
+// 7. 用户确认服务完成
+Mock.mock(/\/api\/v1\/orders\/\d+\/complete/, 'post', (options) => {
+  const idMatch = options.url.match(/\/api\/v1\/orders\/(\d+)\/complete/)
+  const orderId = idMatch ? parseInt(idMatch[1]) : null
+  const order = orders.find((item) => item.orderId === orderId)
+  if (!order) return { code: 3007, message: '订单不存在', data: null }
+  if (order.status !== 1) return { code: 3009, message: '当前状态不可完成', data: null }
+
+  order.status = 2
+  order.operationLogs.push({
+    action: 'complete',
+    fromStatus: 1,
+    toStatus: 2,
+    remark: '用户确认服务完成',
+    createTime: new Date().toISOString().replace(/\.\d{3}Z$/, '+08:00'),
+  })
+  return { code: 0, message: '服务已完成', data: order }
 })
 
 // ========== 工具 ==========

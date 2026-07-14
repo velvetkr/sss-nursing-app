@@ -19,7 +19,7 @@
     <view class="filter-panel">
       <view class="filter-heading">
         <text class="filter-title">服务分类</text>
-        <text class="filter-count">共 {{ serviceStore.total }} 项</text>
+        <text class="filter-count">已加载 {{ serviceStore.total }} 项</text>
       </view>
       <scroll-view scroll-x :show-scrollbar="false">
         <view class="tab-list">

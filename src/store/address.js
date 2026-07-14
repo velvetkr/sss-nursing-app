@@ -41,7 +41,7 @@ export const useAddressStore = defineStore('address', () => {
 
   /** 编辑地址 */
   async function updateAddress(addressId, data) {
-    await http.put(`/api/v1/addresses/${addressId}`, data)
+    await http.patch(`/api/v1/addresses/${addressId}`, data)
     await fetchAddresses()
   }
 

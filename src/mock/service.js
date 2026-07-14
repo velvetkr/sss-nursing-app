@@ -11,8 +11,6 @@
  */
 import Mock from 'mockjs'
 
-const Random = Mock.Random
-
 // ========== 服务分类 ==========
 const categories = [
   { categoryId: 1, name: '专业护理', icon: 'https://cdn.nursing.com/icons/category/nurse.png', sortOrder: 1, status: 1 },
@@ -165,23 +163,10 @@ function getQueryParam(url, param) {
   return match ? decodeURIComponent(match[1]) : null
 }
 
-/** 分页响应 */
-function paginated(list, page, size) {
-  const p = parseInt(page) || 1
-  const s = Math.min(parseInt(size) || 20, 50)
-  const start = (p - 1) * s
-  return {
-    list: list.slice(start, start + s),
-    total: list.length,
-    page: p,
-    size: s,
-  }
-}
-
 /** 构建服务列表项（含 minPrice 和第一个规格） */
 function buildListItem(item) {
   return {
-    itemId: item.itemId,
+    id: item.itemId,
     categoryId: item.categoryId,
     categoryName: item.categoryName,
     name: item.name,
@@ -190,14 +175,19 @@ function buildListItem(item) {
     sortOrder: item.sortOrder,
     status: item.status,
     minPrice: item.minPrice,
-    specs: item.specs.filter((s) => s.status === 1),
+    specs: item.specs.filter((s) => s.status === 1).map((spec) => ({
+      ...spec,
+      id: spec.specId,
+      serviceItemId: item.itemId,
+      specId: undefined,
+    })),
   }
 }
 
 /** 构建服务详情 */
 function buildDetail(item) {
   return {
-    itemId: item.itemId,
+    id: item.itemId,
     categoryId: item.categoryId,
     categoryName: item.categoryName,
     name: item.name,
@@ -206,7 +196,12 @@ function buildDetail(item) {
     images: item.images,
     sortOrder: item.sortOrder,
     status: item.status,
-    specs: item.specs.filter((s) => s.status === 1),
+    specs: item.specs.filter((s) => s.status === 1).map((spec) => ({
+      ...spec,
+      id: spec.specId,
+      serviceItemId: item.itemId,
+      specId: undefined,
+    })),
     minPrice: item.minPrice,
     createTime: item.createTime,
   }
@@ -219,7 +214,10 @@ Mock.mock(/\/api\/v1\/categories$/, 'get', () => {
   return {
     code: 0,
     message: 'success',
-    data: categories.filter((c) => c.status === 1),
+    data: categories.filter((c) => c.status === 1).map((category) => ({
+      ...category,
+      parentId: 0,
+    })),
   }
 })
 
@@ -228,7 +226,7 @@ Mock.mock(/\/api\/v1\/items(\?|$)/, 'get', (options) => {
   const url = options.url
   const categoryId = getQueryParam(url, 'categoryId')
   const keyword = getQueryParam(url, 'keyword')
-  const page = getQueryParam(url, 'page') || '1'
+  const cursor = getQueryParam(url, 'cursor')
   const size = getQueryParam(url, 'size') || '20'
 
   let list = serviceItems.filter((s) => s.status === 1)
@@ -259,10 +257,21 @@ Mock.mock(/\/api\/v1\/items(\?|$)/, 'get', (options) => {
   // 按 sortOrder 排序
   list.sort((a, b) => a.sortOrder - b.sortOrder)
 
+  const offset = cursor?.startsWith('cursor_') ? Number(cursor.slice(7)) || 0 : 0
+  const pageSize = Math.min(parseInt(size) || 20, 50)
+  const pageList = list.slice(offset, offset + pageSize).map(buildListItem)
+  const nextOffset = offset + pageList.length
+  const hasNext = nextOffset < list.length
+
   return {
     code: 0,
     message: 'success',
-    data: paginated(list.map(buildListItem), page, size),
+    data: {
+      list: pageList,
+      size: pageSize,
+      hasNext,
+      nextCursor: hasNext ? `cursor_${nextOffset}` : null,
+    },
   }
 })
 

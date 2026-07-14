@@ -6,8 +6,7 @@
  * - GET  /api/v1/reviews  → 评价列表（?itemId=&page=&size=）
  */
 import Mock from 'mockjs'
-
-const Random = Mock.Random
+import { getMockOrder } from './order.js'
 
 // ========== 模拟评价数据 ==========
 const reviews = [
@@ -46,7 +45,7 @@ const reviews = [
 ]
 
 let nextReviewId = 30009
-const reviewedOrders = new Set() // 已评价的订单
+const reviewedOrders = new Set([20000]) // 已评价的订单
 
 // ========== 工具 ==========
 function getQueryParam(url, param) {
@@ -60,10 +59,18 @@ function getQueryParam(url, param) {
 // 1. 提交评价
 Mock.mock(/\/api\/v1\/reviews$/, 'post', (options) => {
   const body = JSON.parse(options.body)
+  const idempotentKey = (options.headers || {})['Idempotent-Key'] || ''
 
-  if (!body.orderId || !body.rating) {
-    return { code: 1000, message: '订单ID和评分为必填', data: null }
+  if (!idempotentKey) {
+    return { code: 1000, message: '缺少 Idempotent-Key', data: null }
   }
+  if (!body.orderId || !body.rating || !body.content?.trim()) {
+    return { code: 1000, message: '订单ID、评分和评价内容为必填', data: null }
+  }
+
+  const order = getMockOrder(body.orderId)
+  if (!order) return { code: 1005, message: '订单不存在', data: null }
+  if (order.status !== 2) return { code: 4002, message: '该订单暂不可评价', data: null }
 
   // 一单一评
   if (reviewedOrders.has(body.orderId)) {
@@ -74,7 +81,7 @@ Mock.mock(/\/api\/v1\/reviews$/, 'post', (options) => {
   reviews.unshift({
     reviewId,
     orderId: body.orderId,
-    itemId: body.itemId || 401,
+    itemId: order.serviceItemId,
     userId: 10001,
     rating: body.rating,
     content: body.content || '',

@@ -27,6 +27,7 @@ onLoad((options) => { orderId.value = Number(options.orderId) })
 function chooseImages() { uni.chooseImage({ count: 6 - images.value.length, success: ({ tempFilePaths }) => { images.value.push(...tempFilePaths) } }) }
 async function submit() {
   if (!rating.value) return uni.showToast({ title: '请选择服务评分', icon: 'none' })
+  if (!content.value.trim()) return uni.showToast({ title: '请填写评价内容', icon: 'none' })
   submitting.value = true
   try {
     const uploaded = []

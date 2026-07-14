@@ -7,8 +7,7 @@
  * - GET  /api/v1/complaints/{id}/tracks → 投诉处理记录
  */
 import Mock from 'mockjs'
-
-const Random = Mock.Random
+import { getMockOrder } from './order.js'
 
 // ========== 投诉类型 ==========
 const COMPLAINT_TYPES = {
@@ -61,7 +60,6 @@ const complaints = [
 ]
 
 let nextComplaintId = 40003
-let nextTrackId = 3
 const submittedKeys = new Set() // 幂等键集合
 
 // ========== 工具 ==========
@@ -76,13 +74,23 @@ function getQueryParam(url, param) {
 // 1. 提交投诉
 Mock.mock(/\/api\/v1\/complaints$/, 'post', (options) => {
   const body = JSON.parse(options.body)
+  const requestKey = (options.headers || {})['Idempotent-Key'] || ''
 
-  if (!body.orderId || !body.type) {
-    return { code: 1000, message: '订单ID和投诉类型为必填', data: null }
+  if (!requestKey) {
+    return { code: 1000, message: '缺少 Idempotent-Key', data: null }
+  }
+  if (!body.orderId || !body.type || !body.content?.trim()) {
+    return { code: 1000, message: '订单ID、投诉类型和内容为必填', data: null }
+  }
+
+  const order = getMockOrder(body.orderId)
+  if (!order) return { code: 1005, message: '订单不存在', data: null }
+  if (order.status !== 1 && order.status !== 2) {
+    return { code: 1000, message: '仅待服务或已完成订单可提交投诉', data: null }
   }
 
   // 幂等校验（从 Header 获取，简化处理）
-  const idempotentKey = body.orderId + '_' + body.type
+  const idempotentKey = requestKey
   if (submittedKeys.has(idempotentKey)) {
     return { code: 1006, message: '请勿重复提交投诉', data: null }
   }

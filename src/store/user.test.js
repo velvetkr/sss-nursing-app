@@ -12,9 +12,10 @@ vi.mock('@/utils/request.js', () => ({
   default: {
     get: vi.fn(),
     post: vi.fn(),
-    put: vi.fn(),
+    patch: vi.fn(),
     upload: vi.fn(),
   },
+  createIdempotentKey: vi.fn(() => '00000000-0000-4000-8000-000000000001'),
 }))
 
 import http from '@/utils/request.js'
@@ -169,18 +170,25 @@ describe('userStore — 个人信息', () => {
   })
 
   it('updateProfile 合并更新本地信息', async () => {
-    http.put.mockResolvedValueOnce({
+    http.patch.mockResolvedValueOnce({
       code: 0,
-      data: { nickname: '新昵称', gender: 0 },
+      data: { nickname: '新昵称', gender: 0, version: 2 },
     })
 
     const store = useUserStore()
-    store.userInfo = { userId: 1, phone: '138****8000', nickname: '旧昵称' }
+    store.userInfo = { userId: 1, phone: '138****8000', nickname: '旧昵称', version: 1 }
     await store.updateProfile({ nickname: '新昵称', gender: 0 })
+
+    expect(http.patch).toHaveBeenCalledWith('/api/v1/users/profile', {
+      nickname: '新昵称',
+      gender: 0,
+      version: 1,
+    })
 
     expect(store.userInfo.nickname).toBe('新昵称')
     expect(store.userInfo.gender).toBe(0)
     expect(store.userInfo.phone).toBe('138****8000') // 保留原有字段
+    expect(store.userInfo.version).toBe(2)
   })
 })
 

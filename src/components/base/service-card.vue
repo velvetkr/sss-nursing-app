@@ -19,7 +19,7 @@
         </view>
         <text class="card-desc">{{ data.description }}</text>
         <view v-if="data.specs && data.specs.length" class="card-meta">
-          <text v-for="spec in data.specs.slice(0, 2)" :key="spec.specId" class="card-spec">{{ spec.name }}</text>
+          <text v-for="spec in data.specs.slice(0, 2)" :key="spec.specId || spec.id" class="card-spec">{{ spec.name }}</text>
         </view>
         <view class="card-footer">
           <view class="price-label">¥<text class="price-num">{{ data.minPrice || (data.specs && data.specs[0]?.price) || '--' }}</text> 起</view>
