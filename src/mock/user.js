@@ -11,12 +11,31 @@
  * - 文件上传 /api/v1/files/upload
  */
 import Mock from 'mockjs'
+import { ROLES } from '@/constants/roles.js'
 
 const Random = Mock.Random
 
 // ========== 模拟用户数据 ==========
 const users = new Map()
 const tokenBlacklist = new Set() // 登出黑名单
+
+const ROLE_PERMISSIONS = {
+  [ROLES.CUSTOMER]: [
+    'customer:service:view',
+    'customer:order:create',
+    'customer:order:view',
+  ],
+  [ROLES.CAREGIVER]: [
+    'caregiver:task:list',
+    'caregiver:assignment:accept',
+    'caregiver:service:check-in',
+  ],
+  [ROLES.MERCHANT_MEMBER]: [
+    'merchant:service:manage',
+    'merchant:order:view',
+    'merchant:order:dispatch',
+  ],
+}
 
 // 预设测试账号（密码: 123456）
 const testUser = {
@@ -31,20 +50,54 @@ const testUser = {
   lastLoginTime: '2026-07-01T10:00:00+08:00',
   createTime: '2026-01-15T08:00:00+08:00',
   version: 0,
+  roles: [ROLES.CUSTOMER, ROLES.CAREGIVER],
+  caregiverId: 50001,
 }
 users.set('13800138000', testUser)
 
+users.set('13800138001', {
+  userId: 10002,
+  phone: '13800138001',
+  password: '123456',
+  nickname: '李护理员',
+  avatar: '',
+  gender: 2,
+  idCard: '110101199202021234',
+  status: 0,
+  lastLoginTime: '2026-07-01T10:00:00+08:00',
+  createTime: '2026-02-01T08:00:00+08:00',
+  version: 0,
+  roles: [ROLES.CAREGIVER],
+  caregiverId: 50002,
+})
+
+users.set('13800138002', {
+  userId: 10003,
+  phone: '13800138002',
+  password: '123456',
+  nickname: '康宁护理中心',
+  avatar: '',
+  gender: 0,
+  idCard: null,
+  status: 0,
+  lastLoginTime: '2026-07-01T10:00:00+08:00',
+  createTime: '2026-03-01T08:00:00+08:00',
+  version: 0,
+  roles: [ROLES.MERCHANT_MEMBER],
+  merchantId: 20001,
+})
+
 // ========== 工具函数 ==========
 
-function generateToken(userId) {
-  return `mock_jwt_${userId}_${Date.now()}_${Random.string('lower', 16)}`
+function generateToken(userId, role = ROLES.CUSTOMER) {
+  return `mock_jwt_${userId}_${role}_${Date.now()}_${Random.string('lower', 16)}`
 }
 
 function maskPhone(phone) {
   return phone.slice(0, 3) + '****' + phone.slice(-4)
 }
 
-function buildUserResponse(user) {
+function buildUserResponse(user, currentRole = ROLES.CUSTOMER) {
   return {
     userId: user.userId,
     phone: maskPhone(user.phone),
@@ -53,6 +106,22 @@ function buildUserResponse(user) {
     gender: user.gender,
     status: user.status,
     version: user.version || 0,
+    roles: user.roles || [ROLES.CUSTOMER],
+    currentRole,
+    merchantId: user.merchantId || null,
+    caregiverId: user.caregiverId || null,
+  }
+}
+
+function buildAuthResponse(user, currentRole) {
+  const roles = user.roles || [ROLES.CUSTOMER]
+  return {
+    token: generateToken(user.userId, currentRole),
+    expireTime: expireTime(),
+    roles,
+    currentRole,
+    permissions: ROLE_PERMISSIONS[currentRole] || [],
+    user: buildUserResponse(user, currentRole),
   }
 }
 
@@ -128,26 +197,24 @@ Mock.mock(/\/api\/v1\/users\/register/, 'post', (options) => {
     lastLoginTime: new Date().toISOString().replace(/\.\d{3}Z$/, '+08:00'),
     createTime: new Date().toISOString().replace(/\.\d{3}Z$/, '+08:00'),
     version: 0,
+    roles: [ROLES.CUSTOMER],
   }
   users.set(phone, user)
 
-  const token = generateToken(user.userId)
   console.log(`[Mock] 注册成功: ${phone} → userId=${user.userId}`)
 
   return {
     code: 0,
     message: '注册成功',
     data: {
-      token,
-      expireTime: expireTime(),
-      user: buildUserResponse(user),
+      ...buildAuthResponse(user, ROLES.CUSTOMER),
     },
   }
 })
 
 // ========== 3. 用户登录 ==========
 Mock.mock(/\/api\/v1\/users\/login/, 'post', (options) => {
-  const { phone, loginMode, password, smsCode } = JSON.parse(options.body)
+  const { phone, loginMode, password, smsCode, targetRole = ROLES.CUSTOMER } = JSON.parse(options.body)
 
   const user = users.get(phone)
   if (!user) {
@@ -173,18 +240,23 @@ Mock.mock(/\/api\/v1\/users\/login/, 'post', (options) => {
     return { code: 1000, message: '请选择登录方式', data: null }
   }
 
-  const token = generateToken(user.userId)
+  if (!Object.values(ROLES).includes(targetRole) || targetRole === ROLES.ADMIN) {
+    return { code: 2020, message: '请选择有效的登录身份', data: null }
+  }
+
+  if (!(user.roles || [ROLES.CUSTOMER]).includes(targetRole)) {
+    return { code: 2021, message: '该账号尚未开通所选身份', data: null }
+  }
+
   user.lastLoginTime = new Date().toISOString().replace(/\.\d{3}Z$/, '+08:00')
 
-  console.log(`[Mock] 登录成功: ${phone} (${loginMode})`)
+  console.log(`[Mock] 登录成功: ${phone} (${loginMode}, ${targetRole})`)
 
   return {
     code: 0,
     message: '登录成功',
     data: {
-      token,
-      expireTime: expireTime(),
-      user: buildUserResponse(user),
+      ...buildAuthResponse(user, targetRole),
     },
   }
 })
@@ -244,6 +316,8 @@ Mock.mock(/\/api\/v1\/users\/profile/, 'get', (options) => {
   // 简单解析：mock token 里包含 userId
   const userIdMatch = token.match(/mock_jwt_(\d+)/)
   const userId = userIdMatch ? parseInt(userIdMatch[1]) : 10001
+  const roleMatch = token.match(/mock_jwt_\d+_(CUSTOMER|CAREGIVER|MERCHANT_MEMBER)_/)
+  const currentRole = roleMatch?.[1] || ROLES.CUSTOMER
 
   // 找到对应用户
   let user = null
@@ -271,6 +345,10 @@ Mock.mock(/\/api\/v1\/users\/profile/, 'get', (options) => {
       lastLoginTime: user.lastLoginTime,
       createTime: user.createTime,
       version: user.version || 0,
+      roles: user.roles || [ROLES.CUSTOMER],
+      currentRole,
+      merchantId: user.merchantId || null,
+      caregiverId: user.caregiverId || null,
     },
   }
 })

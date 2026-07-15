@@ -6,6 +6,8 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
 import { useUserStore } from '@/store/user.js'
+import { useRoleStore } from '@/store/role.js'
+import { ROLES } from '@/constants/roles.js'
 
 // Mock request 模块
 vi.mock('@/utils/request.js', () => ({
@@ -50,21 +52,43 @@ describe('userStore — 登录流程', () => {
   })
 
   it('密码登录成功后状态更新', async () => {
-    const mockUser = { userId: 1, phone: '138****8000', nickname: '测试' }
+    const mockUser = {
+      userId: 1,
+      phone: '138****8000',
+      nickname: '测试',
+      roles: [ROLES.CUSTOMER, ROLES.CAREGIVER],
+      currentRole: ROLES.CAREGIVER,
+    }
     http.post.mockResolvedValueOnce({
       code: 0,
       message: 'success',
-      data: { token: 'jwt-token-abc', user: mockUser },
+      data: {
+        token: 'jwt-token-abc',
+        roles: mockUser.roles,
+        currentRole: ROLES.CAREGIVER,
+        permissions: ['caregiver:task:list'],
+        user: mockUser,
+      },
     })
 
     const store = useUserStore()
-    await store.login('13800138000', '123456', 'password')
+    await store.login('13800138000', '123456', 'password', ROLES.CAREGIVER)
+    const roleStore = useRoleStore()
 
     expect(store.token).toBe('jwt-token-abc')
     expect(store.userInfo).toEqual(mockUser)
     expect(store.isLogin).toBe(true)
     expect(store.isLoggedIn).toBe(true)
     expect(getToken()).toBe('jwt-token-abc')
+    expect(roleStore.currentRole).toBe(ROLES.CAREGIVER)
+    expect(roleStore.availableRoles).toEqual([ROLES.CUSTOMER, ROLES.CAREGIVER])
+    expect(roleStore.hasPermission('caregiver:task:list')).toBe(true)
+    expect(http.post).toHaveBeenCalledWith('/api/v1/users/login', {
+      phone: '13800138000',
+      loginMode: 'password',
+      targetRole: ROLES.CAREGIVER,
+      password: '123456',
+    })
   })
 
   it('验证码登录成功后状态更新', async () => {
@@ -79,6 +103,8 @@ describe('userStore — 登录流程', () => {
 
     expect(store.token).toBe('jwt-sms-token')
     expect(store.isLoggedIn).toBe(true)
+    expect(store.userInfo.roles).toEqual([ROLES.CUSTOMER])
+    expect(store.userInfo.currentRole).toBe(ROLES.CUSTOMER)
   })
 
   it('登录失败时状态不变', async () => {
@@ -111,6 +137,13 @@ describe('userStore — 注册流程', () => {
     expect(store.token).toBe('jwt-reg-token')
     expect(store.userInfo.nickname).toBe('新注册')
     expect(store.isLogin).toBe(true)
+    expect(http.post).toHaveBeenCalledWith('/api/v1/users/register', {
+      phone: '13700137000',
+      smsCode: '123456',
+      password: 'mypassword',
+      nickname: '新注册',
+      targetRole: ROLES.CUSTOMER,
+    })
   })
 })
 
@@ -164,9 +197,17 @@ describe('userStore — 个人信息', () => {
     http.get.mockResolvedValueOnce({ code: 0, data: profile })
 
     const store = useUserStore()
+    store.userInfo = {
+      roles: [ROLES.CUSTOMER, ROLES.CAREGIVER],
+      currentRole: ROLES.CAREGIVER,
+    }
     const result = await store.fetchProfile()
-    expect(result).toEqual(profile)
-    expect(store.userInfo).toEqual(profile)
+    expect(result).toEqual({
+      ...profile,
+      roles: [ROLES.CUSTOMER, ROLES.CAREGIVER],
+      currentRole: ROLES.CAREGIVER,
+    })
+    expect(store.userInfo.roles).toEqual([ROLES.CUSTOMER, ROLES.CAREGIVER])
   })
 
   it('updateProfile 合并更新本地信息', async () => {

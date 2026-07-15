@@ -15,6 +15,27 @@
 
     <!-- 登录表单 — 玻璃拟态卡片 -->
     <view class="form-section">
+      <view class="role-section">
+        <text class="role-title">选择登录身份</text>
+        <view class="role-tabs">
+          <view
+            v-for="role in APP_LOGIN_ROLES"
+            :key="role.value"
+            class="role-item"
+            :class="{ active: selectedRole === role.value }"
+            @click="selectRole(role.value)"
+          >
+            <u-icon
+              :name="role.icon"
+              size="22"
+              :color="selectedRole === role.value ? '#3A7BF7' : '#8E9DAE'"
+            />
+            <text class="role-label">{{ role.label }}</text>
+            <text class="role-desc">{{ role.description }}</text>
+          </view>
+        </view>
+      </view>
+
       <view class="form-card">
         <!-- 登录方式 Tab -->
         <view class="login-tabs">
@@ -115,7 +136,7 @@
         <!-- 底部提示 -->
         <view class="form-footer">
           <text class="footer-text">还没有账号？</text>
-          <text class="footer-link" @click="goRegister">立即注册</text>
+          <text class="footer-link" @click="handleRoleApply">{{ roleActionText }}</text>
         </view>
       </view>
     </view>
@@ -132,8 +153,12 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useUserStore } from '@/store/user.js'
+import { useRoleStore } from '@/store/role.js'
+import { APP_LOGIN_ROLES, ROLES } from '@/constants/roles.js'
 
 const userStore = useUserStore()
+const roleStore = useRoleStore()
+const selectedRole = ref(roleStore.lastLoginRole)
 const loginMode = ref('password')
 const phone = ref('')
 const code = ref('')
@@ -142,6 +167,12 @@ const countdown = ref(0)
 const submitting = ref(false)
 let timer = null
 
+const roleActionText = computed(() => {
+  if (selectedRole.value === ROLES.CAREGIVER) return '申请成为护理人员'
+  if (selectedRole.value === ROLES.MERCHANT_MEMBER) return '申请商户入驻'
+  return '立即注册'
+})
+
 const canSubmit = computed(() => {
   if (phone.value.length !== 11 || submitting.value) return false
   if (loginMode.value === 'password') {
@@ -149,6 +180,11 @@ const canSubmit = computed(() => {
   }
   return code.value.length === 6
 })
+
+function selectRole(role) {
+  selectedRole.value = role
+  roleStore.rememberLoginRole(role)
+}
 
 function sendCode() {
   if (phone.value.length !== 11) {
@@ -171,10 +207,10 @@ async function handleLogin() {
   submitting.value = true
   try {
     const credential = loginMode.value === 'password' ? password.value : code.value
-    await userStore.login(phone.value, credential, loginMode.value)
+    await userStore.login(phone.value, credential, loginMode.value, selectedRole.value)
     uni.showToast({ title: '登录成功', icon: 'success' })
     setTimeout(() => {
-      uni.switchTab({ url: '/pages/index/index' })
+      roleStore.goToWorkspace()
     }, 1000)
   } catch {
     // 错误提示已在 request.js 拦截器中统一处理
@@ -187,8 +223,17 @@ function forgotPassword() {
   uni.showToast({ title: '请使用验证码登录后重置密码', icon: 'none' })
 }
 
-function goRegister() {
-  uni.navigateTo({ url: '/pages/register/register' })
+function handleRoleApply() {
+  if (selectedRole.value === ROLES.CUSTOMER) {
+    uni.navigateTo({ url: '/pages/register/register' })
+    return
+  }
+  uni.showToast({
+    title: selectedRole.value === ROLES.CAREGIVER
+      ? '护理人员申请功能将在下一阶段开放'
+      : '商户入驻功能将在下一阶段开放',
+    icon: 'none',
+  })
 }
 </script>
 
@@ -267,6 +312,63 @@ function goRegister() {
   padding: 0 $spacing-base;
   position: relative;
   z-index: 1;
+}
+
+.role-section {
+  margin-bottom: 22rpx;
+  padding: 24rpx;
+  border: $glass-border-soft;
+  border-radius: 28rpx;
+  background: $surface-gradient;
+  box-shadow: $shadow-sm;
+}
+
+.role-title {
+  display: block;
+  margin-bottom: 18rpx;
+  color: $text-color-secondary;
+  font-size: $font-size-sm;
+  font-weight: 600;
+}
+
+.role-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12rpx;
+}
+
+.role-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 0;
+  padding: 18rpx 8rpx 16rpx;
+  border: 2rpx solid transparent;
+  border-radius: 22rpx;
+  background: rgba(244, 247, 251, 0.78);
+  transition: all $transition-base;
+
+  &.active {
+    border-color: rgba(58, 123, 247, 0.34);
+    background: $primary-bg;
+    box-shadow: 0 8rpx 20rpx rgba(58, 123, 247, 0.12);
+  }
+}
+
+.role-label {
+  margin-top: 8rpx;
+  color: $text-color;
+  font-size: 26rpx;
+  font-weight: 600;
+}
+
+.role-desc {
+  margin-top: 4rpx;
+  overflow: hidden;
+  color: $text-color-hint;
+  font-size: 19rpx;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .form-card {

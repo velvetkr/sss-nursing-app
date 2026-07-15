@@ -12,13 +12,14 @@ import { ref, computed } from 'vue'
 import {
   getToken,
   setToken,
-  removeToken,
   getUserInfo,
   setUserInfo,
-  removeUserInfo,
+  clearAuthStorage,
   isLoggedIn as checkLogin,
 } from '@/utils/storage.js'
 import http, { createIdempotentKey } from '@/utils/request.js'
+import { ROLES } from '@/constants/roles.js'
+import { useRoleStore } from '@/store/role.js'
 
 export const useUserStore = defineStore(
   'user',
@@ -36,12 +37,18 @@ export const useUserStore = defineStore(
     // ===== 内部方法 =====
     /** 登录/注册成功后保存状态 */
     function _onAuthSuccess(data) {
-      const { token: newToken, user } = data
+      const { token: newToken, user, permissions = [] } = data
+      const roleStore = useRoleStore()
+      const roles = data.roles || user?.roles || [data.currentRole || user?.currentRole || ROLES.CUSTOMER]
+      const currentRole = data.currentRole || user?.currentRole || roles[0] || ROLES.CUSTOMER
+      const normalizedUser = { ...user, roles, currentRole }
+
       token.value = newToken
-      userInfo.value = user
+      userInfo.value = normalizedUser
       isLogin.value = true
       setToken(newToken)
-      setUserInfo(user)
+      setUserInfo(normalizedUser)
+      roleStore.applyAuthSession({ roles, currentRole, permissions })
     }
 
     // ===== 对外方法 =====
@@ -62,11 +69,13 @@ export const useUserStore = defineStore(
      * @param {string} phoneNumber - 手机号
      * @param {string} credential - 密码或验证码
      * @param {'password'|'sms'} loginMode - 登录方式
+     * @param {'CUSTOMER'|'CAREGIVER'|'MERCHANT_MEMBER'} targetRole - 目标登录身份
      */
-    async function login(phoneNumber, credential, loginMode = 'password') {
+    async function login(phoneNumber, credential, loginMode = 'password', targetRole = ROLES.CUSTOMER) {
       const body = {
         phone: phoneNumber,
         loginMode,
+        targetRole,
       }
       if (loginMode === 'password') {
         body.password = credential
@@ -88,6 +97,7 @@ export const useUserStore = defineStore(
         smsCode,
         password,
         nickname,
+        targetRole: ROLES.CUSTOMER,
       })
       _onAuthSuccess(res.data)
       return res
@@ -103,17 +113,17 @@ export const useUserStore = defineStore(
       token.value = ''
       userInfo.value = null
       isLogin.value = false
-      removeToken()
-      removeUserInfo()
+      clearAuthStorage()
+      useRoleStore().clearSession()
       uni.reLaunch({ url: '/pages/login/login' })
     }
 
     /** 获取个人信息（启动时校验 Token 有效性） */
     async function fetchProfile() {
       const res = await http.get('/api/v1/users/profile')
-      userInfo.value = res.data
-      setUserInfo(res.data)
-      return res.data
+      userInfo.value = { ...userInfo.value, ...res.data }
+      setUserInfo(userInfo.value)
+      return userInfo.value
     }
 
     /** 修改个人信息 */

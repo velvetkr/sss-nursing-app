@@ -81,6 +81,68 @@
       "style": { "navigationBarTitleText": "投诉进度" }
     }
   ],
+  "subPackages": [
+    {
+      "root": "subpkg-caregiver",
+      "name": "caregiver",
+      "pages": [
+        {
+          "path": "home/index",
+          "style": { "navigationBarTitleText": "护理工作台" }
+        },
+        {
+          "path": "tasks/index",
+          "style": { "navigationBarTitleText": "我的任务" }
+        },
+        {
+          "path": "task-detail/index",
+          "style": { "navigationBarTitleText": "任务详情" }
+        },
+        {
+          "path": "service-finish/index",
+          "style": { "navigationBarTitleText": "完成服务" }
+        },
+        {
+          "path": "schedule/index",
+          "style": { "navigationBarTitleText": "排班管理" }
+        },
+        {
+          "path": "profile/index",
+          "style": { "navigationBarTitleText": "护理人员中心" }
+        }
+      ]
+    },
+    {
+      "root": "subpkg-merchant",
+      "name": "merchant",
+      "pages": [
+        {
+          "path": "home/index",
+          "style": { "navigationBarTitleText": "商户工作台" }
+        },
+        {
+          "path": "orders/index",
+          "style": { "navigationBarTitleText": "订单管理" }
+        },
+        {
+          "path": "order-detail/index",
+          "style": { "navigationBarTitleText": "商户订单详情" }
+        },
+        {
+          "path": "dispatch/index",
+          "style": { "navigationBarTitleText": "选择护理人员" }
+        },
+        {
+          "path": "services/index",
+          "style": { "navigationBarTitleText": "服务管理" }
+        },
+        {
+          "path": "profile/index",
+          "style": { "navigationBarTitleText": "商户中心" }
+        }
+      ]
+    }
+  ],
   "globalStyle": {
     "navigationBarTextStyle": "white",
     "navigationBarTitleText": "智慧护理",

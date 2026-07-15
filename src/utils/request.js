@@ -8,7 +8,7 @@
  * - 支持 Idempotent-Key 幂等请求头
  * - 支持 PATCH / DELETE 方法
  */
-import { getToken, removeToken } from './storage.js'
+import { clearAuthStorage, getToken } from './storage.js'
 import devConfig from '../../config/dev.js'
 import prodConfig from '../../config/prod.js'
 
@@ -50,6 +50,8 @@ const ERROR_MESSAGES = {
   2017: '上传请求冲突，请重新选择文件',
   2018: '文件上传处理中，请稍后重试',
   2019: '短信请求幂等键冲突',
+  2020: '请选择有效的登录身份',
+  2021: '该账号尚未开通所选身份',
   // 订单 3000-3999
   3001: '下单令牌已过期，请重新提交',
   3002: '该时段已被预约',
@@ -67,6 +69,10 @@ const ERROR_MESSAGES = {
   4003: '该订单已评价',
   4006: '投诉记录不存在',
   4007: '无权查看该投诉',
+  // 护理人员和派单 5000-5999
+  5001: '护理人员当前不可接单',
+  5002: '派单记录不存在',
+  5004: '请先完成到达签到',
 }
 
 /** 根据错误码获取友好提示 */
@@ -140,7 +146,7 @@ function request(options = {}) {
             resolve(data)
           } else if (isAuthError(data.code, statusCode)) {
             // 登录态过期 / Token 黑名单
-            removeToken()
+            clearAuthStorage()
             uni.showToast({ title: getErrorMessage(data.code, '请重新登录'), icon: 'none' })
             setTimeout(() => {
               uni.reLaunch({ url: '/pages/login/login' })
@@ -153,7 +159,7 @@ function request(options = {}) {
             reject(data)
           }
         } else if (isAuthError(data?.code, statusCode)) {
-          removeToken()
+          clearAuthStorage()
           uni.showToast({ title: getErrorMessage(data?.code, '登录已过期，请重新登录'), icon: 'none' })
           setTimeout(() => {
             uni.reLaunch({ url: '/pages/login/login' })

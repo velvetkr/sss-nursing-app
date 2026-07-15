@@ -12,6 +12,16 @@ import http, {
   clearIdempotentKey,
   createIdempotentKey,
 } from '@/utils/request.js'
+import {
+  LEGACY_STATUS_MAP,
+  canCustomerCancel,
+  canCustomerComplain,
+  canCustomerConfirm,
+  canCustomerPay,
+  canCustomerReview,
+  getOrderStatusMeta,
+  normalizeOrderState,
+} from '@/constants/order-status.js'
 
 export const useOrderStore = defineStore('order', () => {
   // ===== 状态 =====
@@ -23,14 +33,7 @@ export const useOrderStore = defineStore('order', () => {
   const paymentKeys = new Map()
 
   // ===== 状态映射 =====
-  const STATUS_MAP = {
-    0: '待支付',
-    1: '待服务',
-    2: '已完成',
-    3: '已取消',
-    4: '退款中',
-    5: '已退款',
-  }
+  const STATUS_MAP = LEGACY_STATUS_MAP
 
   const SLOT_MAP = {
     MORNING: '上午 (08:00-12:00)',
@@ -99,14 +102,18 @@ export const useOrderStore = defineStore('order', () => {
     return { ...payment, success: true }
   }
 
-  /** 用户确认服务完成 */
-  async function completeOrder(orderId) {
-    const res = await http.post(`/api/v1/orders/${orderId}/complete`)
+  /** 用户确认护理人员已完成服务 */
+  async function confirmOrder(orderId) {
+    const res = await http.post(`/api/v1/orders/${orderId}/confirm`, null, {
+      idempotentKey: createIdempotentKey('confirm'),
+    })
     if (currentOrder.value?.orderId === orderId) {
       await fetchOrderDetail(orderId)
     }
     return res.data
   }
+
+  const completeOrder = confirmOrder
 
   /** 订单列表（支持状态筛选 + 分页） */
   async function fetchOrders(params = {}) {
@@ -118,7 +125,7 @@ export const useOrderStore = defineStore('order', () => {
       }
       const res = await http.get('/api/v1/orders', query)
       const data = res.data
-      orders.value = data.list || []
+      orders.value = (data.list || []).map(normalizeOrderState)
       total.value = data.total || 0
       return { list: orders.value, total: total.value }
     } finally {
@@ -131,7 +138,7 @@ export const useOrderStore = defineStore('order', () => {
     loading.value = true
     try {
       const res = await http.get(`/api/v1/orders/${orderId}`)
-      currentOrder.value = res.data
+      currentOrder.value = normalizeOrderState(res.data)
       return currentOrder.value
     } finally {
       loading.value = false
@@ -152,7 +159,12 @@ export const useOrderStore = defineStore('order', () => {
 
   /** 获取状态文案 */
   function getStatusText(status) {
-    return STATUS_MAP[status] || '未知'
+    if (typeof status === 'object') return getOrderStatusMeta(status).text
+    return getOrderStatusMeta(status).text
+  }
+
+  function getStatusMeta(order) {
+    return getOrderStatusMeta(order)
   }
 
   /** 获取时段文案 */
@@ -172,11 +184,18 @@ export const useOrderStore = defineStore('order', () => {
     createOrder,
     payOrder,
     executePayment,
+    confirmOrder,
     completeOrder,
     fetchOrders,
     fetchOrderDetail,
     cancelOrder,
     getStatusText,
+    getStatusMeta,
     getSlotText,
+    canCustomerPay,
+    canCustomerCancel,
+    canCustomerConfirm,
+    canCustomerReview,
+    canCustomerComplain,
   }
 })

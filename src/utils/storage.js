@@ -6,6 +6,10 @@ const KEYS = {
   REFRESH_TOKEN: 'refreshToken',
   USER_INFO: 'userInfo',
   LOGIN_TIME: 'loginTime',
+  ACTIVE_ROLE: 'activeRole',
+  AVAILABLE_ROLES: 'availableRoles',
+  PERMISSIONS: 'permissions',
+  LAST_LOGIN_ROLE: 'lastLoginRole',
 }
 
 /** 设置存储 */
@@ -68,6 +72,52 @@ export function removeUserInfo() {
   remove(KEYS.USER_INFO)
 }
 
+// ========== 角色会话 ==========
+
+export function getActiveRole() {
+  return get(KEYS.ACTIVE_ROLE, '')
+}
+
+export function setActiveRole(role) {
+  set(KEYS.ACTIVE_ROLE, role)
+}
+
+export function getAvailableRoles() {
+  return get(KEYS.AVAILABLE_ROLES, [])
+}
+
+export function setAvailableRoles(roles) {
+  set(KEYS.AVAILABLE_ROLES, Array.isArray(roles) ? roles : [])
+}
+
+export function getPermissions() {
+  return get(KEYS.PERMISSIONS, [])
+}
+
+export function setPermissions(permissions) {
+  set(KEYS.PERMISSIONS, Array.isArray(permissions) ? permissions : [])
+}
+
+export function getLastLoginRole() {
+  return get(KEYS.LAST_LOGIN_ROLE, '')
+}
+
+export function setLastLoginRole(role) {
+  set(KEYS.LAST_LOGIN_ROLE, role)
+}
+
+export function removeRoleSession() {
+  remove(KEYS.ACTIVE_ROLE)
+  remove(KEYS.AVAILABLE_ROLES)
+  remove(KEYS.PERMISSIONS)
+}
+
+export function clearAuthStorage() {
+  removeToken()
+  removeUserInfo()
+  removeRoleSession()
+}
+
 // ========== 登录态检查 ==========
 
 /** 判断是否已登录 */
@@ -85,10 +135,27 @@ export function isLoggedIn() {
 
 /** 退出登录 */
 export function logout() {
-  removeToken()
-  removeUserInfo()
+  clearAuthStorage()
   // 跳转到登录页
   uni.reLaunch({ url: '/pages/login/login' })
 }
 
-export default { getToken, setToken, removeToken, getUserInfo, setUserInfo, isLoggedIn, logout }
+export default {
+  getToken,
+  setToken,
+  removeToken,
+  getUserInfo,
+  setUserInfo,
+  getActiveRole,
+  setActiveRole,
+  getAvailableRoles,
+  setAvailableRoles,
+  getPermissions,
+  setPermissions,
+  getLastLoginRole,
+  setLastLoginRole,
+  removeRoleSession,
+  clearAuthStorage,
+  isLoggedIn,
+  logout,
+}

@@ -141,8 +141,10 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useUserStore } from '@/store/user.js'
+import { useRoleStore } from '@/store/role.js'
 
 const userStore = useUserStore()
+const roleStore = useRoleStore()
 const phone = ref('')
 const code = ref('')
 const nickname = ref('')
@@ -202,7 +204,7 @@ async function handleRegister() {
     )
     uni.showToast({ title: '注册成功', icon: 'success' })
     setTimeout(() => {
-      uni.switchTab({ url: '/pages/index/index' })
+      roleStore.goToWorkspace()
     }, 1000)
   } catch {
     // 错误提示已在 request.js 拦截器中统一处理
