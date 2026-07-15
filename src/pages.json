@@ -79,6 +79,54 @@
     {
       "path": "pages/complaint/complaint-detail",
       "style": { "navigationBarTitleText": "投诉进度" }
+    },
+    {
+      "path": "pages/merchant/home",
+      "style": { "navigationBarTitleText": "商户工作台" }
+    },
+    {
+      "path": "pages/merchant/apply",
+      "style": { "navigationBarTitleText": "商户入驻" }
+    },
+    {
+      "path": "pages/merchant/profile",
+      "style": { "navigationBarTitleText": "商户资料" }
+    },
+    {
+      "path": "pages/merchant/service-list",
+      "style": { "navigationBarTitleText": "服务管理" }
+    },
+    {
+      "path": "pages/merchant/service-edit",
+      "style": { "navigationBarTitleText": "编辑服务" }
+    },
+    {
+      "path": "pages/merchant/service-detail",
+      "style": { "navigationBarTitleText": "服务详情" }
+    },
+    {
+      "path": "pages/merchant/order-list",
+      "style": { "navigationBarTitleText": "订单管理" }
+    },
+    {
+      "path": "pages/merchant/order-detail",
+      "style": { "navigationBarTitleText": "订单详情" }
+    },
+    {
+      "path": "pages/merchant/dispatch",
+      "style": { "navigationBarTitleText": "派单" }
+    },
+    {
+      "path": "pages/merchant/caregiver-list",
+      "style": { "navigationBarTitleText": "护理人员" }
+    },
+    {
+      "path": "pages/merchant/caregiver-detail",
+      "style": { "navigationBarTitleText": "人员详情" }
+    },
+    {
+      "path": "pages/merchant/member-list",
+      "style": { "navigationBarTitleText": "商户成员" }
     }
   ],
   "globalStyle": {

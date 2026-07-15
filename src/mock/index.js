@@ -15,6 +15,7 @@ import './address.js'
 import './order.js'
 import './review.js'
 import './complaint.js'
+import './merchant.js'
 
 // 全局 Mock 配置
 Mock.setup({
