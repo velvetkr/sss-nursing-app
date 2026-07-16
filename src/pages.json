@@ -79,6 +79,78 @@
     {
       "path": "pages/complaint/complaint-detail",
       "style": { "navigationBarTitleText": "投诉进度" }
+    },
+    {
+      "path": "pages/caregiver/apply",
+      "style": { "navigationBarTitleText": "护理人员认证" }
+    },
+    {
+      "path": "pages/caregiver/home",
+      "style": { "navigationBarTitleText": "护理工作台" }
+    },
+    {
+      "path": "pages/caregiver/order-list",
+      "style": { "navigationBarTitleText": "我的任务" }
+    },
+    {
+      "path": "pages/caregiver/order-detail",
+      "style": { "navigationBarTitleText": "任务详情" }
+    },
+    {
+      "path": "pages/caregiver/check-in",
+      "style": { "navigationBarTitleText": "服务签到" }
+    },
+    {
+      "path": "pages/caregiver/service-record",
+      "style": { "navigationBarTitleText": "服务记录" }
+    },
+    {
+      "path": "pages/caregiver/schedule",
+      "style": { "navigationBarTitleText": "排班管理" }
+    },
+    {
+      "path": "pages/caregiver/profile",
+      "style": { "navigationBarTitleText": "个人资料" }
+    },
+    {
+      "path": "pages/admin/login",
+      "style": { "navigationBarTitleText": "管理员登录" }
+    },
+    {
+      "path": "pages/admin/home",
+      "style": { "navigationBarTitleText": "管理员首页" }
+    },
+    {
+      "path": "pages/admin/merchant-review-list",
+      "style": { "navigationBarTitleText": "商户审核列表" }
+    },
+    {
+      "path": "pages/admin/merchant-review-detail",
+      "style": { "navigationBarTitleText": "商户审核详情" }
+    },
+    {
+      "path": "pages/admin/caregiver-review-list",
+      "style": { "navigationBarTitleText": "护理人员审核列表" }
+    },
+    {
+      "path": "pages/admin/caregiver-review-detail",
+      "style": { "navigationBarTitleText": "护理人员审核详情" }
+    },
+    {
+      "path": "pages/admin/service-review-list",
+      "style": { "navigationBarTitleText": "服务审核列表" }
+    },
+    {
+      "path": "pages/admin/service-review-detail",
+      "style": { "navigationBarTitleText": "服务审核详情" }
+    },
+    {
+      "path": "pages/admin/order-list",
+      "style": { "navigationBarTitleText": "异常订单" }
+    },
+    {
+      "path": "pages/admin/complaint-detail",
+      "style": { "navigationBarTitleText": "投诉详情" }
     }
   ],
   "subPackages": [

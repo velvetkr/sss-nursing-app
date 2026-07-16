@@ -7,6 +7,9 @@
  * - catalog-service:  服务分类、服务项目、搜索
  * - order-service:    订单、地址、支付
  * - feedback-service: 评价、投诉
+ * - caregiver-service: 护理人员认证、档案、技能、排班 (Person C)
+ * - work-order-service: 护理工作单、接单、履约 (Person C)
+ * - admin-service:    管理员审核、异常监管、投诉处理 (Person C)
  */
 import Mock from 'mockjs'
 import './user.js'
@@ -15,6 +18,10 @@ import './address.js'
 import './order.js'
 import './review.js'
 import './complaint.js'
+// Person C: 护理人员和管理员 Mock 模块
+import './caregiver.js'
+import './work-order.js'
+import './admin.js'
 
 // 全局 Mock 配置
 Mock.setup({
